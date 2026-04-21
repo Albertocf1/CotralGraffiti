@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Graffiti Check — Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#f4f3f0;--surface:#fff;--border:rgba(0,0,0,0.1);--border-strong:rgba(0,0,0,0.2);--text:#1a1a1a;--text-muted:#6b6b6b;--text-faint:#999;--blue:#185FA5;--blue-light:#E6F1FB;--green:#3B6D11;--green-light:#EAF3DE;--green-mid:#639922;--orange:#D85A30;--orange-light:#FAECE7;--orange-dark:#993C1D;--amber:#BA7517;--amber-light:#FAEEDA;--red:#A32D2D;--red-light:#FCEBEB;--radius:10px;--radius-sm:6px;}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a1a;--surface:#242424;--border:rgba(255,255,255,0.1);--border-strong:rgba(255,255,255,0.2);--text:#f0f0f0;--text-muted:#aaa;--text-faint:#666;--orange-light:#3a1a10;--blue-light:#0d2a45;--green-light:#1a2e08;--amber-light:#2a1e05;--red-light:#2a0f0f;}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,'Helvetica Neue',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+.hidden{display:none!important;}
+#login-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;}
+.login-card{background:var(--surface);border-radius:16px;border:0.5px solid var(--border);padding:2rem;width:100%;max-width:360px;}
+.login-logo{font-size:12px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;}
+.login-title{font-size:22px;font-weight:700;margin-bottom:4px;}
+.login-sub{font-size:13px;color:var(--text-muted);margin-bottom:1.5rem;}
+.login-card label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:5px;margin-top:12px;}
+.login-card input[type=password]{width:100%;font-size:15px;padding:10px 12px;border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);}
+.login-btn{width:100%;margin-top:1.25rem;padding:13px;background:var(--blue);color:white;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:700;cursor:pointer;}
+.login-btn.secondary{background:var(--bg);color:var(--text-muted);border:0.5px solid var(--border-strong);margin-top:10px;}
+.login-err{font-size:13px;color:var(--red);margin-top:10px;text-align:center;}
+#app{max-width:720px;margin:0 auto;padding:0 0 80px;}
+.topbar{background:var(--surface);border-bottom:0.5px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-title{font-size:15px;font-weight:700;}
+.topbar-sub{font-size:11px;color:var(--text-muted);}
+.icon-btn{background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted);padding:6px;}
+.tabs{display:flex;background:var(--surface);border-bottom:0.5px solid var(--border);overflow-x:auto;}
+.tab{flex-shrink:0;padding:11px 16px;font-size:12px;font-weight:700;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;letter-spacing:0.03em;text-transform:uppercase;white-space:nowrap;}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+.card{background:var(--surface);border-radius:var(--radius);border:0.5px solid var(--border);margin:12px 12px 0;padding:14px;}
+.card-title{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;}
+.row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:0.5px solid var(--border);gap:10px;}
+.row:last-child{border-bottom:none;}
+.row-text{font-size:15px;font-weight:500;}
+.row-sub{font-size:11px;color:var(--text-faint);margin-top:2px;}
+.row-actions{display:flex;gap:6px;flex-shrink:0;}
+.btn-sm{padding:6px 12px;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);font-size:12px;font-weight:600;cursor:pointer;background:var(--bg);color:var(--text-muted);min-height:34px;}
+.btn-sm.danger{background:var(--red-light);color:var(--red);border-color:var(--red);}
+.btn-sm.success{background:var(--green-light);color:var(--green);border-color:var(--green-mid);}
+.btn-sm.primary{background:var(--blue);color:white;border-color:var(--blue);}
+.btn-sm.warning{background:var(--amber-light);color:var(--amber);border-color:var(--amber);}
+.add-form{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.add-form input,.add-form select{flex:1;min-width:120px;font-size:14px;padding:8px 10px;border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);min-height:42px;}
+.add-form button{padding:8px 16px;background:var(--blue);color:white;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;min-height:42px;white-space:nowrap;}
+.degraf-item{padding:12px 0;border-bottom:0.5px solid var(--border);}
+.degraf-item:last-child{border-bottom:none;}
+.degraf-num{font-size:15px;font-weight:700;margin-bottom:4px;}
+.degraf-det{font-size:12px;color:var(--text-muted);margin-bottom:6px;line-height:1.6;}
+.export-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.export-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--green-light);color:var(--green);border:1px solid var(--green-mid);border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;min-height:40px;}
+.export-btn:hover{background:var(--green);color:white;}
+.filter-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.filter-row input,.filter-row select{font-size:13px;padding:7px 10px;border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);min-height:38px;}
+.table-wrap{overflow-x:auto;}
+table.data{width:100%;border-collapse:collapse;font-size:13px;}
+table.data th{text-align:left;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;padding:8px 8px;border-bottom:1px solid var(--border-strong);}
+table.data td{padding:9px 8px;border-bottom:0.5px solid var(--border);color:var(--text);}
+table.data tr:last-child td{border-bottom:none;}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-ok{background:var(--green-light);color:var(--green);}
+.badge-graffiti{background:var(--orange-light);color:var(--orange-dark);}
+.badge-danno{background:var(--amber-light);color:var(--amber);}
+.badge-pending{background:var(--bg);color:var(--text-muted);border:0.5px solid var(--border-strong);}
+.pw-section{margin-top:12px;padding-top:12px;border-top:0.5px solid var(--border);}
+.pw-section h4{font-size:13px;font-weight:600;margin-bottom:8px;}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:white;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:500;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;}
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;margin-right:8px;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading{text-align:center;padding:2rem;color:var(--text-muted);font-size:14px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">COTRAL</div>
+    <div class="login-title">Pannello Admin</div>
+    <div class="login-sub">Accesso riservato</div>
+    <label>Password admin</label>
+    <input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button class="login-btn" onclick="doLogin()">Accedi</button>
+    <button class="login-btn secondary" onclick="location.href='index.html'">← Torna all'app operatore</button>
+    <div class="login-err hidden" id="login-err"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div><div class="topbar-title">Admin — Graffiti Check</div><div class="topbar-sub" id="topbar-sub"></div></div>
+    <button class="icon-btn" onclick="doLogout()">✕ Esci</button>
+  </div>
+  <div class="tabs">
+    <div class="tab active" id="tab-degraf" onclick="showTab('degraf')">Degraffitaggio</div>
+    <div class="tab" id="tab-report" onclick="showTab('report')">Report</div>
+    <div class="tab" id="tab-rotabili" onclick="showTab('rotabili')">Rotabili</div>
+    <div class="tab" id="tab-impianti" onclick="showTab('impianti')">Impianti</div>
+    <div class="tab" id="tab-password" onclick="showTab('password')">Password</div>
+  </div>
+
+  <!-- DEGRAFFITAGGIO -->
+  <div id="view-degraf">
+    <div class="card">
+      <div class="card-title">Graffiti attivi — da rimuovere</div>
+      <div id="degraf-list"><div class="loading"><span class="spinner"></span>Caricamento...</div></div>
+    </div>
+  </div>
+
+  <!-- REPORT -->
+  <div id="view-report" class="hidden">
+    <div class="card">
+      <div class="card-title">Esporta dati</div>
+      <div class="export-bar">
+        <button class="export-btn" onclick="exportCSV('segnalazioni')">⬇ Graffiti attivi (CSV)</button>
+        <button class="export-btn" onclick="exportCSV('controlli')">⬇ Controlli del giorno (CSV)</button>
+        <button class="export-btn" onclick="exportCSV('storico')">⬇ Storico completo (CSV)</button>
+      </div>
+      <div class="card-title" style="margin-top:8px;">Controlli oggi</div>
+      <div class="filter-row">
+        <input type="date" id="filter-data" onchange="loadReport()"/>
+        <select id="filter-esito" onchange="loadReport()">
+          <option value="">Tutti gli esiti</option>
+          <option value="regolare">Regolare</option>
+          <option value="graffiti">Graffiti</option>
+          <option value="danno">Danno</option>
+          <option value="non_verificato">Non verificato</option>
+        </select>
+      </div>
+      <div class="table-wrap"><div id="report-table"><div class="loading"><span class="spinner"></span>Caricamento...</div></div></div>
+    </div>
+  </div>
+
+  <!-- ROTABILI -->
+  <div id="view-rotabili" class="hidden">
+    <div class="card">
+      <div class="card-title">Gestione rotabili</div>
+      <div id="admin-rotabili-list"></div>
+      <div class="add-form">
+        <input type="text" id="new-rot-num" placeholder="es. 401/402"/>
+        <select id="new-rot-tipo"><option value="MA300">MA300</option><option value="MA200">MA200</option></select>
+        <button onclick="addRotabile()">+ Aggiungi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPIANTI -->
+  <div id="view-impianti" class="hidden">
+    <div class="card">
+      <div class="card-title">Gestione impianti</div>
+      <div id="admin-impianti-list"></div>
+      <div class="add-form">
+        <input type="text" id="new-imp-nome" placeholder="Nome impianto"/>
+        <button onclick="addImpianto()">+ Aggiungi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASSWORD -->
+  <div id="view-password" class="hidden">
+    <div class="card">
+      <div class="card-title">Gestione password</div>
+      <div class="pw-section">
+        <h4>Password operatori</h4>
+        <div class="add-form">
+          <input type="password" id="new-pw-op" placeholder="Nuova password operatori"/>
+          <button onclick="updatePassword('operatore')">Salva</button>
+        </div>
+      </div>
+      <div class="pw-section">
+        <h4>Password admin</h4>
+        <div class="add-form">
+          <input type="password" id="new-pw-admin" placeholder="Nuova password admin"/>
+          <button onclick="updatePassword('admin')">Salva</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SURL='https://qirrexwnulmszuscgcgl.supabase.co';
+const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpcnJleHdudWxtc3p1c2NnY2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NjU4ODMsImV4cCI6MjA5MjM0MTg4M30.8HDtFVYplk-tXSznmMr1oXkdQlTwXV4qdLIOqodU9i0';
+const sb=supabase.createClient(SURL,SKEY);
+let adminUtenteId=null;
+
+async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');}
+function today(){return new Date().toISOString().slice(0,10);}
+function showToast(msg,dur=2500){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
+
+async function doLogin(){
+  const pw=document.getElementById('login-password').value;
+  const err=document.getElementById('login-err');
+  err.classList.add('hidden');
+  if(!pw){err.textContent='Inserisci la password';err.classList.remove('hidden');return;}
+  const hash=await sha256(pw);
+  const {data:match}=await sb.from('utenti').select('*').eq('ruolo','admin').eq('password_hash',hash).eq('attivo',true).maybeSingle();
+  if(!match){err.textContent='Password admin non corretta';err.classList.remove('hidden');return;}
+  adminUtenteId=match.id;
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('topbar-sub').textContent=today();
+  document.getElementById('filter-data').value=today();
+  loadDegraf();
+}
+
+function doLogout(){adminUtenteId=null;document.getElementById('login-screen').classList.remove('hidden');document.getElementById('app').classList.add('hidden');document.getElementById('login-password').value='';}
+
+function showTab(tab){
+  ['degraf','report','rotabili','impianti','password'].forEach(t=>{
+    document.getElementById('view-'+t).classList.toggle('hidden',t!==tab);
+    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
+  });
+  if(tab==='rotabili')loadAdminRotabili();
+  if(tab==='impianti')loadAdminImpianti();
+  if(tab==='report')loadReport();
+}
+
+// ── DEGRAFFITAGGIO ──
+async function loadDegraf(){
+  const list=document.getElementById('degraf-list');
+  list.innerHTML='<div class="loading"><span class="spinner"></span>Caricamento...</div>';
+  const {data:segs}=await sb.from('segnalazioni').select('*,rotabili(numero,tipo)').eq('attiva',true).order('data',{ascending:false});
+  if(!segs||!segs.length){list.innerHTML='<div class="loading">Nessun graffito attivo 🎉</div>';return;}
+  const grouped={};
+  segs.forEach(s=>{if(!grouped[s.rotabile_id])grouped[s.rotabile_id]={rot:s.rotabili,segs:[]};grouped[s.rotabile_id].segs.push(s);});
+  list.innerHTML=Object.values(grouped).map(g=>`
+    <div class="degraf-item">
+      <div class="degraf-num">${g.rot.numero} <span style="font-size:11px;color:var(--text-faint);">${g.rot.tipo}</span></div>
+      <div class="degraf-det">${g.segs.map(s=>`• ${s.cassa} · lato ${s.lato} · ${(s.tipologie||[]).join(', ')||'—'} · ${(s.zone||[]).join(', ')||'—'} · ${s.estensione||'—'} <span style="color:var(--text-faint)">(${s.data})</span>`).join('<br>')}</div>
+      <div class="row-actions">
+        <button class="btn-sm success" onclick="doDegraf('${g.segs.map(s=>s.id).join(',')}','${g.rot.numero}','${g.segs[0].rotabile_id}')">✓ Degraffitaggio eseguito</button>
+      </div>
+    </div>`).join('');
+}
+
+async function doDegraf(idsStr,rotNum,rotId){
+  if(!confirm(`Confermi il degraffitaggio di ${rotNum}?\nLe segnalazioni verranno chiuse.`))return;
+  const ids=idsStr.split(',');
+  await sb.from('segnalazioni').update({attiva:false}).in('id',ids);
+  for(const id of ids){await sb.from('degraffitaggio').insert({segnalazione_id:id,rotabile_id:rotId,utente_id:adminUtenteId,data_intervento:today()});}
+  showToast(`✓ ${rotNum} — degraffitaggio registrato`);
+  loadDegraf();
+}
+
+// ── REPORT ──
+async function loadReport(){
+  const data=document.getElementById('filter-data').value||today();
+  const esito=document.getElementById('filter-esito').value;
+  let q=sb.from('controlli').select('*,rotabili(numero,tipo),impianti(nome)').eq('data',data);
+  if(esito)q=q.eq('esito',esito);
+  const {data:rows}=await q.order('rotabili(numero)');
+  const bmap={regolare:'<span class="badge badge-ok">✓ regolare</span>',graffiti:'<span class="badge badge-graffiti">⚠ graffiti</span>',danno:'<span class="badge badge-danno">danno</span>',non_verificato:'<span class="badge badge-pending">—</span>'};
+  const tbl=document.getElementById('report-table');
+  if(!rows||!rows.length){tbl.innerHTML='<div class="loading">Nessun dato per questa data</div>';return;}
+  tbl.innerHTML=`<table class="data"><thead><tr><th>Rotabile</th><th>Tipo</th><th>Impianto</th><th>Esito</th><th>Ora</th><th>Note</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${r.rotabili?.numero||'—'}</b></td><td>${r.rotabili?.tipo||'—'}</td><td>${r.impianti?.nome||'—'}</td><td>${bmap[r.esito]||r.esito}</td><td>${r.updated_at?r.updated_at.slice(11,16):''}</td><td style="font-size:12px;color:var(--text-muted);">${r.note||''}</td></tr>`).join('')}</tbody></table>`;
+}
+
+// ── CSV EXPORT ──
+function csvEscape(v){
+  if(v===null||v===undefined)return '';
+  const s=Array.isArray(v)?v.join('|'):String(v);
+  return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:s;
+}
+function downloadCSV(filename,rows,headers){
+  const csv=[headers.join(','),...rows.map(r=>headers.map(h=>csvEscape(r[h])).join(','))].join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download=filename;a.click();
+}
+
+async function exportCSV(tipo){
+  if(tipo==='segnalazioni'){
+    const {data}=await sb.from('segnalazioni').select('*,rotabili(numero,tipo)').eq('attiva',true).order('data',{ascending:false});
+    const rows=(data||[]).map(s=>({data:s.data,rotabile:s.rotabili?.numero,tipo_rotabile:s.rotabili?.tipo,cassa:s.cassa,lato:s.lato,zone:s.zone,tipologie:s.tipologie,estensione:s.estensione,note:s.note}));
+    downloadCSV(`graffiti_attivi_${today()}.csv`,rows,['data','rotabile','tipo_rotabile','cassa','lato','zone','tipologie','estensione','note']);
+    showToast('✓ CSV scaricato');
+  }
+  if(tipo==='controlli'){
+    const data_f=document.getElementById('filter-data').value||today();
+    const {data}=await sb.from('controlli').select('*,rotabili(numero,tipo),impianti(nome)').eq('data',data_f);
+    const rows=(data||[]).map(r=>({data:r.data,rotabile:r.rotabili?.numero,tipo:r.rotabili?.tipo,impianto:r.impianti?.nome,esito:r.esito,note:r.note,aggiornato:r.updated_at?.slice(0,16)}));
+    downloadCSV(`controlli_${data_f}.csv`,rows,['data','rotabile','tipo','impianto','esito','note','aggiornato']);
+    showToast('✓ CSV scaricato');
+  }
+  if(tipo==='storico'){
+    const {data}=await sb.from('segnalazioni').select('*,rotabili(numero,tipo)').order('data',{ascending:false});
+    const rows=(data||[]).map(s=>({data:s.data,rotabile:s.rotabili?.numero,tipo_rotabile:s.rotabili?.tipo,cassa:s.cassa,lato:s.lato,zone:s.zone,tipologie:s.tipologie,estensione:s.estensione,attiva:s.attiva?'sì':'no',note:s.note}));
+    downloadCSV(`storico_graffiti_${today()}.csv`,rows,['data','rotabile','tipo_rotabile','cassa','lato','zone','tipologie','estensione','attiva','note']);
+    showToast('✓ CSV scaricato');
+  }
+}
+
+// ── ROTABILI ──
+async function loadAdminRotabili(){
+  const {data:rots}=await sb.from('rotabili').select('*').order('tipo').order('numero');
+  document.getElementById('admin-rotabili-list').innerHTML=(rots||[]).map(r=>`
+    <div class="row">
+      <div><div class="row-text">${r.numero}</div><div class="row-sub">${r.tipo} · ${r.attivo?'attivo':'disattivato'}</div></div>
+      <div class="row-actions">
+        <button class="btn-sm ${r.attivo?'danger':'success'}" onclick="toggleRotabile('${r.id}',${r.attivo})">${r.attivo?'Disattiva':'Attiva'}</button>
+      </div>
+    </div>`).join('');
+}
+
+async function toggleRotabile(id,attivo){await sb.from('rotabili').update({attivo:!attivo}).eq('id',id);loadAdminRotabili();showToast(attivo?'Rotabile disattivato':'Rotabile attivato');}
+
+async function addRotabile(){
+  const num=document.getElementById('new-rot-num').value.trim();
+  const tipo=document.getElementById('new-rot-tipo').value;
+  if(!num){showToast('Inserisci numero rotabile');return;}
+  const {error}=await sb.from('rotabili').insert({numero:num,tipo});
+  if(error){showToast('Errore: numero già esistente?');return;}
+  document.getElementById('new-rot-num').value='';
+  showToast('✓ Rotabile aggiunto');loadAdminRotabili();
+}
+
+// ── IMPIANTI ──
+async function loadAdminImpianti(){
+  const {data:imps}=await sb.from('impianti').select('*').order('nome');
+  document.getElementById('admin-impianti-list').innerHTML=(imps||[]).map(i=>`
+    <div class="row">
+      <div><div class="row-text">${i.nome}</div><div class="row-sub">${i.attivo?'attivo':'disattivato'}</div></div>
+      <div class="row-actions">
+        <button class="btn-sm ${i.attivo?'danger':'success'}" onclick="toggleImpianto('${i.id}',${i.attivo})">${i.attivo?'Disattiva':'Attiva'}</button>
+      </div>
+    </div>`).join('');
+}
+
+async function toggleImpianto(id,attivo){await sb.from('impianti').update({attivo:!attivo}).eq('id',id);loadAdminImpianti();showToast(attivo?'Impianto disattivato':'Impianto attivato');}
+
+async function addImpianto(){
+  const nome=document.getElementById('new-imp-nome').value.trim();
+  if(!nome){showToast('Inserisci nome impianto');return;}
+  await sb.from('impianti').insert({nome});
+  document.getElementById('new-imp-nome').value='';
+  showToast('✓ Impianto aggiunto');loadAdminImpianti();
+}
+
+// ── PASSWORD ──
+async function updatePassword(ruolo){
+  const inputId=ruolo==='admin'?'new-pw-admin':'new-pw-op';
+  const pw=document.getElementById(inputId).value;
+  if(!pw||pw.length<4){showToast('Password troppo corta (min 4 caratteri)');return;}
+  const hash=await sha256(pw);
+  await sb.from('utenti').update({password_hash:hash}).eq('ruolo',ruolo);
+  document.getElementById(inputId).value='';
+  showToast(`✓ Password ${ruolo} aggiornata`);
+}
+</script>
+</body>
+</html>

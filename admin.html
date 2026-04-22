@@ -265,7 +265,24 @@ async function doDegraf(rotId){
     await sb.from('degraffitaggio').insert({segnalazione_id:segId,rotabile_id:rotId,utente_id:adminUtenteId,data_intervento:today()});
     await sb.from('segnalazioni').update({attiva:false}).eq('id',segId);
   }
-  showToast(`✓ ${rotNum} — ${selected.length} graffiti rimossi`);
+  
+  // Verifica se ci sono ancora graffiti attivi per questo rotabile
+  const {data:remaining}=await sb.from('segnalazioni').select('*').eq('rotabile_id',rotId).eq('attiva',true);
+  
+  if(!remaining||remaining.length===0){
+    // Nessun graffito attivo: cambia lo stato del controllo di oggi a "ok"
+    const {data:ctrl}=await sb.from('controlli').select('*').eq('rotabile_id',rotId).eq('data',today()).maybeSingle();
+    if(ctrl){
+      await sb.from('controlli').update({esito:'ok'}).eq('id',ctrl.id);
+    }else{
+      // Se non esiste controllo di oggi, creane uno con esito "ok"
+      await sb.from('controlli').insert({rotabile_id:rotId,impianto_id:session?.impianto_id||allImpianti[0].id,data:today(),esito:'ok',updated_at:new Date().toISOString(),utente_id:adminUtenteId});
+    }
+    showToast(`✓ ${rotNum} — ${selected.length} graffiti rimossi • Stato → OK`);
+  }else{
+    showToast(`✓ ${rotNum} — ${selected.length} graffiti rimossi (rimangono ${remaining.length} attivi)`);
+  }
+  
   loadDegraf();
 }
 

@@ -293,19 +293,61 @@ async function adminModificaEsito(ctrlId,nuovoEsito){
 async function loadDegraf(){
   const {data:segs}=await sb.from('segnalazioni').select('*,rotabili(numero,tipo)').eq('attiva',true).order('data',{ascending:false});
   if(!segs||!segs.length){document.getElementById('degraf-list').innerHTML='<div class="loading">Nessun graffiti attivo</div>';return;}
-  const byRot={};(segs||[]).forEach(s=>{if(!byRot[s.rotabile_id])byRot[s.rotabile_id]={numero:s.rotabili?.numero,tipo:s.rotabili?.tipo,segnalazioni:[]};byRot[s.rotabile_id].segnalazioni.push(s);});
+  const byRot={};
+  (segs||[]).forEach(s=>{
+    if(!byRot[s.rotabile_id]){
+      byRot[s.rotabile_id]={numero:s.rotabili?.numero,tipo:s.rotabili?.tipo,id:s.rotabile_id,segnalazioni:[]};
+    }
+    byRot[s.rotabile_id].segnalazioni.push(s);
+  });
   document.getElementById('degraf-list').innerHTML=Object.values(byRot).map(g=>{
-    const ids=g.segnalazioni.map(s=>s.id).join(',');
-    return `<div class="degraf-item"><div><div class="degraf-num">${g.numero}</div><div class="degraf-det">${g.tipo} • ${g.segnalazioni.length} segnalazione(i)</div></div><button class="btn-sm danger" onclick="doDegraf('${ids}','${g.numero}','${g.segnalazioni[0].rotabile_id}')">✓ Fatto</button></div>`;
+    const segHtml=g.segnalazioni.map((s,idx)=>`
+      <div style="padding:8px 0;border-bottom:0.5px solid var(--border);font-size:12px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="seg-${s.id}" style="width:16px;height:16px;"/>
+          <span>${s.data} • Cassa ${s.cassa} lato ${s.lato} • ${(s.zone||[]).join(', ')} • ${(s.tipologie||[]).join(', ')}</span>
+        </label>
+        ${s.note?`<div style="margin-top:4px;color:var(--text-muted);">Note: ${s.note}</div>`:''}
+        ${s.foto_urls&&s.foto_urls.length>0?`<div style="margin-top:4px;"><a href="${s.foto_urls[0]}" target="_blank" style="color:var(--blue);font-size:11px;">📷 Visualizza foto</a></div>`:''}
+      </div>
+    `).join('');
+    return `
+      <div class="degraf-item">
+        <div>
+          <div class="degraf-num">${g.numero}</div>
+          <div class="degraf-det">${g.tipo} • ${g.segnalazioni.length} segnalazione(i) attive</div>
+        </div>
+        <div style="width:100%;border-top:0.5px solid var(--border);padding:8px 0;margin-top:8px;">
+          ${segHtml}
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <button class="btn-sm primary" onclick="selectAllDegraf('${g.id}')">Seleziona tutto</button>
+          <button class="btn-sm" onclick="deselectAllDegraf('${g.id}')">Deseleziona tutto</button>
+          <button class="btn-sm success" onclick="doDegrafPartial('${g.numero}','${g.id}')">✓ Rimuovi selezionati</button>
+        </div>
+      </div>
+    `;
   }).join('');
 }
 
-async function doDegraf(idsStr,rotNum,rotId){
-  if(!confirm(`Confermi il degraffitaggio di ${rotNum}?\nLe segnalazioni verranno chiuse.`))return;
-  const ids=idsStr.split(',');
-  await sb.from('segnalazioni').update({attiva:false}).in('id',ids);
-  for(const id of ids){await sb.from('degraffitaggio').insert({segnalazione_id:id,rotabile_id:rotId,utente_id:adminUtenteId,data_intervento:today()});}
-  showToast(`✓ ${rotNum} — degraffitaggio registrato`);
+function selectAllDegraf(rotId){
+  document.querySelectorAll(`input[id^="seg-"]`).forEach(cb=>cb.checked=true);
+}
+
+function deselectAllDegraf(rotId){
+  document.querySelectorAll(`input[id^="seg-"]`).forEach(cb=>cb.checked=false);
+}
+
+async function doDegrafPartial(rotNum,rotId){
+  const selected=Array.from(document.querySelectorAll(`input[id^="seg-"]:checked`)).map(cb=>cb.id.replace('seg-',''));
+  if(!selected.length){showToast('Seleziona almeno un graffiti');return;}
+  if(!confirm(`Rimuovi ${selected.length} graffiti da ${rotNum}?`))return;
+  
+  for(const segId of selected){
+    await sb.from('degraffitaggio').insert({segnalazione_id:segId,rotabile_id:rotId,utente_id:adminUtenteId,data_intervento:today()});
+    await sb.from('segnalazioni').update({attiva:false}).eq('id',segId);
+  }
+  showToast(`✓ ${selected.length} graffiti rimossi da ${rotNum}`);
   loadDegraf();
 }
 

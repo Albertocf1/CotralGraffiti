@@ -290,15 +290,21 @@ function today(){return new Date().toISOString().split('T')[0];}
 
 async function loadData(){
   try{
-    const [rot,ctrl,segnalazioni,storico]=await Promise.all([
+    const [rot,ctrl,segnalazioni,storicoSegnalazioni]=await Promise.all([
       sb.from('rotabili').select('*').eq('impianto_id',session.impianto_id),
       sb.from('controlli').select('*').eq('data',today()).eq('impianto_id',session.impianto_id),
       sb.from('segnalazioni').select('*').eq('data',today()).eq('impianto_id',session.impianto_id),
-      sb.from('segnalazioni').select('*').eq('impianto_id',session.impianto_id)
+      sb.from('segnalazioni').select('*').eq('impianto_id',session.impianto_id).eq('attiva',true)  // TUTTI i graffiti attivi, qualsiasi data
     ]);
     rotabili=rot.data||[];
     controlliOggi={};(ctrl.data||[]).forEach(c=>controlliOggi[c.rotabile_id]=c);
-    storicoGraffiti={};(storico.data||[]).forEach(s=>{if(!storicoGraffiti[s.rotabile_id])storicoGraffiti[s.rotabile_id]=[];storicoGraffiti[s.rotabile_id].push(s);});
+    storicoGraffiti={};
+    // Combina graffiti di oggi con quelli storici ancora attivi
+    const allSegnalazioni=[...(segnalazioni.data||[]),...(storicoSegnalazioni.data||[])];
+    allSegnalazioni.forEach(s=>{
+      if(!storicoGraffiti[s.rotabile_id])storicoGraffiti[s.rotabile_id]=[];
+      storicoGraffiti[s.rotabile_id].push(s);
+    });
     document.getElementById('topbar-sub').textContent=`${today()} • ${session.utente_nome}`;
     renderList();
   }catch(e){showToast('Errore caricamento dati: '+e.message,4000);}
@@ -307,9 +313,9 @@ async function loadData(){
 function renderList(){
   const html=rotabili.map(r=>{
     const ctrl=controlliOggi[r.id];
-    const esito_badge=ctrl?`<span class="badge badge-${ctrl.esito}">${ctrl.esito}</span>`:'<span class="badge badge-pending">in sospeso</span>';
-    const graffiti_count=(storicoGraffiti[r.id]||[]).length>0?`<span class="storico-dot"></span>`:'';
-    return `<div class="rot-item" onclick="openRotabile('${r.id}')"><div><div class="rot-num">${r.nome}</div><div class="rot-meta">${r.tipo}${graffiti_count}</div></div>${esito_badge}</div>`;
+    const graffiti_attivi=(storicoGraffiti[r.id]||[]).filter(s=>s.attiva).length;
+    const esito_badge=graffiti_attivi>0?`<span class="badge badge-graffiti">🔴 ${graffiti_attivi} graffiti</span>`:ctrl?`<span class="badge badge-${ctrl.esito}">${ctrl.esito}</span>`:'<span class="badge badge-pending">in sospeso</span>';
+    return `<div class="rot-item" onclick="openRotabile('${r.id}')"><div><div class="rot-num">${r.nome}</div><div class="rot-meta">${r.tipo}</div></div>${esito_badge}</div>`;
   }).join('');
   document.getElementById('app-content').innerHTML=`<div class="card"><div class="card-title">Rotabili oggi (${today()})</div><div class="group-label">${rotabili.length} da controllare</div>${html}</div>`;
 }

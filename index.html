@@ -52,6 +52,7 @@ body{font-family:-apple-system,'Helvetica Neue',sans-serif;background:var(--bg);
 .esito-btn.active-ok{background:var(--green-light);border-color:var(--green-mid);color:var(--green);}
 .esito-btn.active-graffiti{background:var(--orange-light);border-color:var(--orange);color:var(--orange-dark);}
 .esito-btn.active-danno{background:var(--amber-light);border-color:var(--amber);color:var(--amber);}
+.esito-btn:disabled{opacity:0.4;cursor:not-allowed;}
 .convoy-wrap{overflow-x:auto;padding:10px 0 6px;}
 .convoy{display:flex;align-items:center;min-width:max-content;}
 .conn{width:8px;height:3px;background:var(--border-strong);margin-top:-20px;}
@@ -292,26 +293,6 @@ async function openRotabile(rid){
   fotoFiles={};
   document.getElementById('list-view').classList.add('hidden');
   document.getElementById('scheda-view').classList.remove('hidden');
-  
-  // Controlla se ci sono graffiti attivi
-  const graffiti_attivi=(storicoGraffiti[rid]||[]).filter(s=>s.attiva);
-  
-  if(graffiti_attivi.length>0){
-    // Blocca la modifica
-    document.getElementById('scheda-view').innerHTML=`
-      <button class="back-btn" onclick="backToList()">← Indietro</button>
-      <div class="card" style="background:var(--red-light);border:0.5px solid var(--red);padding:16px;text-align:center;margin-top:12px;">
-        <div style="font-size:18px;font-weight:700;color:var(--red);margin-bottom:8px;">🔴 GRAFFITI ATTIVI</div>
-        <div style="font-size:14px;color:var(--red);margin-bottom:12px;">Questo rotabile ha <strong>${graffiti_attivi.length}</strong> graffiti ancora attivi.</div>
-        <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">
-          <strong>Non puoi modificare lo stato finché i graffiti non vengono rimossi.</strong><br/>
-          <br/>Contatta l'admin per rimuovere i graffiti nel pannello Admin → Degraffitaggio.
-        </div>
-      </div>
-    `;
-    return;
-  }
-  
   document.getElementById('scheda-num').textContent=currentRotabile.numero;
   document.getElementById('scheda-meta').textContent=`${currentRotabile.tipo} · ${session.impianto_nome} · ${today()}`;
   document.getElementById('note-generali').value='';
@@ -320,15 +301,36 @@ async function openRotabile(rid){
   updateEsitoBtn();
   const segs=storicoGraffiti[rid]||[];
   const sc=document.getElementById('storico-card');
-  if(segs.length){sc.classList.remove('hidden');document.getElementById('storico-content').innerHTML=segs.map(s=>`• <b>${s.cassa}</b> lato <b>${s.lato}</b> — ${(s.tipologie||[]).join(', ')||'—'} · ${(s.zone||[]).join(', ')||'—'} (${s.data})`).join('<br>');}
+  if(segs.length){
+    const graffiti_attivi=segs.filter(s=>s.attiva);
+    const warning=graffiti_attivi.length>0?`<div style="background:var(--orange-light);border:0.5px solid var(--orange);border-radius:var(--radius-sm);padding:8px;margin-bottom:8px;font-size:12px;color:var(--orange);">⚠️ ${graffiti_attivi.length} graffiti attivi - non possono essere rimossi da qui</div>`:'';
+    sc.classList.remove('hidden');
+    document.getElementById('storico-content').innerHTML=warning+segs.map(s=>`• <b>${s.cassa}</b> lato <b>${s.lato}</b> — ${(s.tipologie||[]).join(', ')||'—'} · ${(s.zone||[]).join(', ')||'—'} (${s.data})`).join('<br>');
+  }
   else{sc.classList.add('hidden');}
   drawConvoy();buildTable();
   if(currentEsito==='graffiti'){document.getElementById('section-casse').classList.remove('hidden');if(ctrl)await prefill(ctrl.id);}
 }
 
 function backToList(){document.getElementById('list-view').classList.remove('hidden');document.getElementById('scheda-view').classList.add('hidden');currentRotabile=null;currentEsito=null;}
-function setEsito(t){currentEsito=t;updateEsitoBtn();document.getElementById('section-casse').classList.toggle('hidden',t!=='graffiti');}
-function updateEsitoBtn(){document.getElementById('btn-ok').className=currentEsito==='regolare'?'esito-btn active-ok':'esito-btn';document.getElementById('btn-graffiti').className=currentEsito==='graffiti'?'esito-btn active-graffiti':'esito-btn';document.getElementById('btn-danno').className=currentEsito==='danno'?'esito-btn active-danno':'esito-btn';}
+function setEsito(t){
+  // Blocca il cambio a "regolare" se ci sono graffiti attivi
+  if(t==='regolare'){
+    const graffiti_attivi=(storicoGraffiti[currentRotabile.id]||[]).filter(s=>s.attiva);
+    if(graffiti_attivi.length>0){
+      showToast('⛔ Non puoi selezionare OK: ci sono '+graffiti_attivi.length+' graffiti attivi',3000);
+      return;
+    }
+  }
+  currentEsito=t;
+  updateEsitoBtn();
+  document.getElementById('section-casse').classList.toggle('hidden',t!=='graffiti');
+}
+function updateEsitoBtn(){
+  document.getElementById('btn-ok').className=currentEsito==='regolare'?'esito-btn active-ok':'esito-btn';
+  document.getElementById('btn-graffiti').className=currentEsito==='graffiti'?'esito-btn active-graffiti':'esito-btn';
+  document.getElementById('btn-danno').className=currentEsito==='danno'?'esito-btn active-danno':'esito-btn';
+}
 
 async function prefill(ctrl_id){
   const {data:segs}=await sb.from('segnalazioni').select('*').eq('controllo_id',ctrl_id).eq('attiva',true);
@@ -359,7 +361,14 @@ function buildTable(){
   const table=document.getElementById('casse-table');table.innerHTML='';
   currentCasse.forEach(c=>{
     const prevSegs=(storicoGraffiti[currentRotabile?.id]||[]).filter(s=>s.cassa===c.id);
-    const cbsHtml=c.lati.map(lato=>{const hasPrev=prevSegs.some(s=>s.lato===lato);return `<label class="cb-item" id="cbl-${c.id}-${lato}"><input type="checkbox" id="cb-${c.id}-${lato}" onchange="toggleDet('${c.id}','${lato}',this.checked)"/><span>${lato}${hasPrev?'<span class="prev-dot"></span>':''}</span></label>`;}).join('');
+    const prevSegsAttivi=prevSegs.filter(s=>s.attiva);
+    const cbsHtml=c.lati.map(lato=>{
+      const hasPrev=prevSegs.some(s=>s.lato===lato);
+      const hasActive=prevSegsAttivi.some(s=>s.lato===lato);
+      const disabled=hasActive?' disabled style="opacity:0.5;cursor:not-allowed;"':'';
+      const title=hasActive?' title="Graffiti già registrato - non può essere rimosso"':'';
+      return `<label class="cb-item" id="cbl-${c.id}-${lato}" ${disabled}><input type="checkbox" id="cb-${c.id}-${lato}" onchange="toggleDet('${c.id}','${lato}',this.checked)"${disabled}${title}/><span>${lato}${hasPrev?'<span class="prev-dot"></span>':''}</span></label>`;
+    }).join('');
     const detHtml=c.lati.map(lato=>`<div class="detail-panel" id="dp-${c.id}-${lato}"><div class="detail-group"><label>Zona (più scelte)</label><div class="chip-group" id="zona-${c.id}-${lato}">${ZONE.map(z=>`<span class="chip" data-v="${z}" onclick="toggleChip(this)">${z}</span>`).join('')}</div></div><div class="detail-group"><label>Tipologia (più scelte)</label><div class="chip-group" id="tipo-${c.id}-${lato}">${TIPI.map(t=>`<span class="chip" data-v="${t}" onclick="toggleChip(this)">${t}</span>`).join('')}</div></div><div class="detail-group"><label>Estensione</label><div class="chip-group" id="est-${c.id}-${lato}">${ESTENSIONI.map(e=>`<span class="chip" data-v="${e}" onclick="selOne(this,'est-${c.id}-${lato}')">${e}</span>`).join('')}</div></div><input class="note-input" type="text" id="note-${c.id}-${lato}" placeholder="Note su ${c.label} lato ${lato}..."/><label class="foto-trigger" id="ft-${c.id}-${lato}">📷 Scatta / allega foto<input type="file" accept="image/*" capture="environment" multiple class="foto-upload" onchange="handleFoto(this,'${c.id}','${lato}')"/></label><div class="foto-preview" id="fp-${c.id}-${lato}"></div></div>`).join('');
     const tr=document.createElement('tr');
     tr.innerHTML=`<td style="width:62px;padding-top:12px;vertical-align:top;"><span class="car-badge${c.isTestata?' testata':''}">${c.label}</span></td><td><div class="checkboxes">${cbsHtml}</div>${detHtml}</td>`;
@@ -412,6 +421,16 @@ async function uploadFotos(cid,lato,ctrl_id){
 
 async function saveScheda(){
   if(!currentEsito){showToast('Seleziona un esito');return;}
+  
+  // Blocca se prova a salvare "regolare" con graffiti attivi
+  if(currentEsito==='regolare'){
+    const graffiti_attivi=(storicoGraffiti[currentRotabile.id]||[]).filter(s=>s.attiva);
+    if(graffiti_attivi.length>0){
+      showToast('⛔ Non puoi salvare OK con '+graffiti_attivi.length+' graffiti attivi',3000);
+      return;
+    }
+  }
+  
   const btn=document.getElementById('save-btn');btn.textContent='Salvataggio...';btn.disabled=true;
   try{
     const ctrlData={rotabile_id:currentRotabile.id,impianto_id:session.impianto_id,utente_id:session.utente_id,data:today(),esito:currentEsito,note:document.getElementById('note-generali').value,updated_at:new Date().toISOString()};

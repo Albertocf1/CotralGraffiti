@@ -229,19 +229,21 @@ async function init(){
       await loadData();
     }else{
       showLogin();
-      await loadImpianti();
+      await loadImpianti();  // Carica impianti quando mostra il form login
     }
-  }catch(e){console.error(e);showLogin();}
+  }catch(e){console.error(e);showLogin();await loadImpianti();}
 }
 
 async function loadImpianti(){
   try{
-    const {data}=await sb.from('impianti').select('*');
+    const {data,error}=await sb.from('impianti').select('*').eq('attivo',true);
+    if(error){console.error('Errore caricamento impianti:',error);return;}
     impianti=data||[];
     const sel=document.getElementById('login-impianto');
     sel.innerHTML='<option value="">Seleziona impianto</option>';
     impianti.forEach(i=>sel.innerHTML+=`<option value="${i.id}">${i.nome}</option>`);
-  }catch(e){console.error(e);}
+    console.log('Impianti caricati:',impianti);
+  }catch(e){console.error('Errore:',e);}
 }
 
 async function doLogin(){

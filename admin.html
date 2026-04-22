@@ -70,31 +70,6 @@ table.data tr:last-child td{border-bottom:none;}
 .spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;margin-right:8px;vertical-align:middle;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .loading{text-align:center;padding:2rem;color:var(--text-muted);font-size:14px;}
-.esito-selector{display:flex;gap:6px;margin-top:4px;}
-.esito-selector button{flex:1;padding:6px 8px;font-size:11px;font-weight:600;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:var(--bg);color:var(--text-muted);cursor:pointer;min-height:32px;}
-.esito-selector button:hover{background:var(--border-strong);}
-.esito-selector button.active{background:var(--blue);color:white;border-color:var(--blue);}
-.esito-btn-big{flex:1;padding:16px 12px;font-size:14px;font-weight:700;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:var(--bg);color:var(--text-muted);cursor:pointer;min-height:60px;text-align:center;transition:all 0.15s;}
-.esito-btn-big:hover{opacity:0.8;}
-.esito-btn-big.active{color:white;font-weight:700;}
-.esito-btn-big.active-ok{background:var(--green);color:white;border-color:var(--green-mid);}
-.esito-btn-big.active-graffiti{background:var(--orange);color:white;border-color:var(--orange-dark);}
-.esito-btn-big.active-danno{background:var(--amber);color:white;border-color:var(--amber);}
-.cb-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);cursor:pointer;background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;min-height:40px;transition:all 0.15s;user-select:none;margin-bottom:6px;}
-.cb-item.checked{background:var(--orange-light);border-color:var(--orange);color:var(--orange-dark);font-weight:600;}
-.cb-item input[type=checkbox]{width:16px;height:16px;accent-color:var(--orange);flex-shrink:0;}
-.checkboxes{display:flex;flex-wrap:wrap;gap:6px;}
-.casse-table{width:100%;border-collapse:collapse;font-size:13px;}
-.casse-table tr{border-bottom:0.5px solid var(--border);}
-.casse-table tr:last-child{border-bottom:none;}
-.casse-table td{padding:10px 4px;vertical-align:top;}
-.car-badge{font-size:12px;font-weight:700;background:var(--bg);border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);padding:4px 8px;display:inline-block;min-width:52px;text-align:center;}
-.car-badge.testata{background:var(--blue-light);border-color:#85B7EB;color:var(--blue);}
-.car-v{display:flex;flex-direction:column;align-items:center;}
-.car-lbl{font-size:10px;color:var(--text-faint);margin-top:4px;}
-.convoy-wrap{overflow-x:auto;padding:10px 0 6px;}
-.convoy{display:flex;align-items:center;min-width:max-content;}
-.conn{width:8px;height:3px;background:var(--border-strong);margin-top:-20px;}
 </style>
 </head>
 <body>
@@ -118,21 +93,15 @@ table.data tr:last-child td{border-bottom:none;}
     <button class="icon-btn" onclick="doLogout()">✕ Esci</button>
   </div>
   <div class="tabs">
-    <div class="tab active" id="tab-modifica" onclick="showTab('modifica')">Modifica Controlli</div>
-    <div class="tab" id="tab-degraf" onclick="showTab('degraf')">Degraffitaggio</div>
+    <div class="tab active" id="tab-degraf" onclick="showTab('degraf')">Degraffitaggio</div>
     <div class="tab" id="tab-report" onclick="showTab('report')">Report</div>
     <div class="tab" id="tab-rotabili" onclick="showTab('rotabili')">Rotabili</div>
     <div class="tab" id="tab-impianti" onclick="showTab('impianti')">Impianti</div>
     <div class="tab" id="tab-password" onclick="showTab('password')">Password</div>
   </div>
 
-  <!-- MODIFICA CONTROLLI (NEW) -->
-  <div id="view-modifica">
-    <div id="modifica-content"></div>
-  </div>
-
   <!-- DEGRAFFITAGGIO -->
-  <div id="view-degraf" class="hidden">
+  <div id="view-degraf">
     <div class="card">
       <div class="card-title">Graffiti attivi — da rimuovere</div>
       <div id="degraf-list"><div class="loading"><span class="spinner"></span>Caricamento...</div></div>
@@ -153,9 +122,10 @@ table.data tr:last-child td{border-bottom:none;}
         <input type="date" id="filter-data" onchange="loadReport()"/>
         <select id="filter-esito" onchange="loadReport()">
           <option value="">Tutti gli esiti</option>
-          <option value="ok">OK</option>
+          <option value="regolare">Regolare</option>
           <option value="graffiti">Graffiti</option>
           <option value="danno">Danno</option>
+          <option value="non_verificato">Non verificato</option>
         </select>
       </div>
       <div class="table-wrap"><div id="report-table"><div class="loading"><span class="spinner"></span>Caricamento...</div></div></div>
@@ -215,7 +185,7 @@ table.data tr:last-child td{border-bottom:none;}
 const SURL='https://qirrexwnulmszuscgcgl.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpcnJleHdudWxtc3p1c2NnY2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NjU4ODMsImV4cCI6MjA5MjM0MTg4M30.8HDtFVYplk-tXSznmMr1oXkdQlTwXV4qdLIOqodU9i0';
 const sb=supabase.createClient(SURL,SKEY);
-let adminUtenteId=null,allImpianti=[];
+let adminUtenteId=null;
 
 async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');}
 function today(){return new Date().toISOString().slice(0,10);}
@@ -228,333 +198,51 @@ async function doLogin(){
   if(!pw){err.textContent='Inserisci la password';err.classList.remove('hidden');return;}
   const hash=await sha256(pw);
   const {data:match}=await sb.from('utenti').select('*').eq('ruolo','admin').eq('password_hash',hash).eq('attivo',true).maybeSingle();
-  if(!match){err.textContent='Password non valida';err.classList.remove('hidden');return;}
+  if(!match){err.textContent='Password admin non corretta';err.classList.remove('hidden');return;}
   adminUtenteId=match.id;
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  document.getElementById('topbar-sub').textContent='Admin';
-  init();
+  document.getElementById('topbar-sub').textContent=today();
+  document.getElementById('filter-data').value=today();
+  loadDegraf();
 }
 
-function doLogout(){
-  adminUtenteId=null;
-  document.getElementById('app').classList.add('hidden');
-  document.getElementById('login-screen').classList.remove('hidden');
-  document.getElementById('login-password').value='';
-}
+function doLogout(){adminUtenteId=null;document.getElementById('login-screen').classList.remove('hidden');document.getElementById('app').classList.add('hidden');document.getElementById('login-password').value='';}
 
 function showTab(tab){
-  document.querySelectorAll('[id^="view-"]').forEach(v=>v.classList.add('hidden'));
-  document.querySelectorAll('[id^="tab-"]').forEach(t=>t.classList.remove('active'));
-  document.getElementById('view-'+tab).classList.remove('hidden');
-  document.getElementById('tab-'+tab).classList.add('active');
-  if(tab==='modifica')loadModificaControlli();
-  if(tab==='degraf')loadDegraf();
-  if(tab==='report'){
-    document.getElementById('filter-data').value=today();
-    loadReport();
-  }
+  ['degraf','report','rotabili','impianti','password'].forEach(t=>{
+    document.getElementById('view-'+t).classList.toggle('hidden',t!==tab);
+    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
+  });
   if(tab==='rotabili')loadAdminRotabili();
   if(tab==='impianti')loadAdminImpianti();
-}
-
-async function init(){
-  const {data}=await sb.from('impianti').select('*').eq('attivo',true);
-  allImpianti=data||[];
-  const sel=document.getElementById('filter-modifica-impianto');
-  sel.innerHTML='<option value="">Tutti gli impianti</option>';
-  allImpianti.forEach(i=>sel.innerHTML+=`<option value="${i.id}">${i.nome}</option>`);
-  document.getElementById('filter-modifica-data').value=today();
-  loadModificaControlli();
-}
-
-// ── MODIFICA CONTROLLI ──
-async function loadModificaControlli(){
-  const data=document.getElementById('filter-modifica-data').value||today();
-  const impianto=document.getElementById('filter-modifica-impianto').value;
-  let q=sb.from('rotabili').select('*').eq('attivo',true);
-  if(impianto)q=q.eq('impianto_id',impianto);
-  const {data:rots}=await q.order('numero');
-  
-  // Carica controlli e graffiti attivi per questa data
-  let qCtrl=sb.from('controlli').select('*').eq('data',data);
-  if(impianto)qCtrl=qCtrl.eq('impianto_id',impianto);
-  const {data:controlli}=await qCtrl;
-  
-  const {data:segnalazioni}=await sb.from('segnalazioni').select('*').eq('impianto_id',impianto||allImpianti[0].id).eq('attiva',true);
-  
-  const ctrlMap={};(controlli||[]).forEach(c=>ctrlMap[c.rotabile_id]=c);
-  const graffitiMap={};(segnalazioni||[]).forEach(s=>{if(!graffitiMap[s.rotabile_id])graffitiMap[s.rotabile_id]=[];graffitiMap[s.rotabile_id].push(s);});
-  
-  const html=`
-    <button class="back-btn" onclick="showTab('degraf')">← Indietro</button>
-    <div class="card">
-      <div class="card-title">Modifica controlli</div>
-      <div class="filter-row">
-        <input type="date" id="filter-modifica-data" value="${data}" onchange="loadModificaControlli()"/>
-        <select id="filter-modifica-impianto" onchange="loadModificaControlli()">
-          <option value="">Tutti gli impianti</option>
-          ${allImpianti.map(i=>`<option value="${i.id}" ${impianto===i.id?'selected':''}>${i.nome}</option>`).join('')}
-        </select>
-      </div>
-    </div>
-    ${(rots||[]).map(r=>{
-      const ctrl=ctrlMap[r.id];
-      const graffiti=graffitiMap[r.id]||[];
-      return `
-        <div class="card" style="padding:0;overflow:hidden;">
-          <div style="padding:14px;background:var(--bg);">
-            <div style="font-size:16px;font-weight:700;margin-bottom:4px;">${r.numero}</div>
-            <div style="font-size:12px;color:var(--text-muted);">${r.tipo}</div>
-            ${graffiti.length>0?`<div style="font-size:11px;color:var(--orange);margin-top:4px;font-weight:600;">🔴 ${graffiti.length} graffiti attivi</div>`:''}
-          </div>
-          <div style="padding:12px;border-top:0.5px solid var(--border);">
-            <div style="display:flex;gap:8px;margin-bottom:12px;">
-              <button class="esito-btn-big ${ctrl?.esito==='ok'?'active-ok':''}" onclick="adminSalvaEsito('${r.id}','${r.numero}','ok','${data}')">✓<br/>OK</button>
-              <button class="esito-btn-big ${ctrl?.esito==='graffiti'?'active-graffiti':''}" onclick="adminSalvaEsito('${r.id}','${r.numero}','graffiti','${data}')">🔴<br/>Graffiti</button>
-              <button class="esito-btn-big ${ctrl?.esito==='danno'?'active-danno':''}" onclick="adminSalvaEsito('${r.id}','${r.numero}','danno','${data}')">⚠<br/>Danno</button>
-            </div>
-            <input type="text" class="note-input" id="note-${r.id}" placeholder="Note..." value="${ctrl?.note||''}" style="margin:0;"/>
-            <button class="btn-sm primary" onclick="adminSalvaNota('${r.id}','${r.numero}','${data}')" style="width:100%;margin-top:8px;">Salva nota</button>
-          </div>
-        </div>
-      `;
-    }).join('')}
-  `;
-  document.getElementById('modifica-content').innerHTML=html;
-}
-
-async function adminSalvaEsito(rotId,rotNum,esito,data){
-  const {data:existing}=await sb.from('controlli').select('*').eq('rotabile_id',rotId).eq('data',data).maybeSingle();
-  const note=document.getElementById(`note-${rotId}`).value;
-  
-  // Se seleziona "graffiti", apri la vista dettagliata
-  if(esito==='graffiti'){
-    await adminApriFotoDettagli(rotId,rotNum,data,existing?.id);
-    return;
-  }
-  
-  if(existing){
-    await sb.from('controlli').update({esito,note,updated_at:new Date().toISOString()}).eq('id',existing.id);
-  }else{
-    await sb.from('controlli').insert({rotabile_id:rotId,impianto_id:allImpianti[0].id,data,esito,note,updated_at:new Date().toISOString(),utente_id:adminUtenteId});
-  }
-  showToast(`✓ ${rotNum} — esito "${esito}" salvato`);
-  loadModificaControlli();
-}
-
-async function adminApriFotoDettagli(rotId,rotNum,data,ctrlId){
-  const {data:rot}=await sb.from('rotabili').select('*').eq('id',rotId).maybeSingle();
-  const {data:segnalazioni}=await sb.from('segnalazioni').select('*').eq('rotabile_id',rotId).eq('attiva',true);
-  
-  if(!rot)return;
-  
-  const casse=JSON.parse(rot.casse_json||'[]');
-  const graffitiPerCassa={};
-  (segnalazioni||[]).forEach(s=>{
-    const key=`${s.cassa}-${s.lato}`;
-    if(!graffitiPerCassa[key])graffitiPerCassa[key]=[];
-    graffitiPerCassa[key].push(s);
-  });
-  
-  let html=`<button class="back-btn" onclick="loadModificaControlli()">← Indietro a modifica</button>`;
-  html+=`<div class="card"><div style="padding:14px;"><div style="font-size:18px;font-weight:700;margin-bottom:4px;">${rotNum}</div><div style="font-size:12px;color:var(--text-muted);">Rimozione graffiti selettiva</div></div></div>`;
-  
-  // Mostra le casse
-  html+=`<div class="card" style="padding:14px;"><div class="card-title">Composizione</div><div class="convoy-wrap"><div class="convoy" id="convoy-svg"></div></div></div>`;
-  
-  // Tabella graffiti per cassa
-  html+=`<div class="card"><table class="casse-table" id="casse-table"></table></div>`;
-  
-  html+=`<div class="card" style="padding:14px;"><button class="btn-sm primary" onclick="adminConfermaSelezione('${rotId}','${rotNum}','${data}','${ctrlId||''}')" style="width:100%;">✓ Conferma selezione e salva</button></div>`;
-  
-  document.getElementById('modifica-content').innerHTML=html;
-  
-  // Disegna le casse
-  setTimeout(()=>{
-    adminDrawConvoy(casse);
-    adminBuildCasseTable(casse,graffitiPerCassa);
-  },100);
-  
-  // Salva i dati globali per il salvataggio successivo
-  window.adminCurrentRot={rotId,rotNum,data,ctrlId,casse,segnalazioni};
-}
-
-function adminDrawConvoy(casse){
-  const cont=document.getElementById('convoy-svg');
-  if(!cont)return;
-  cont.innerHTML='';
-  casse.forEach((c,i)=>{
-    if(i>0){const d=document.createElement('div');d.className='conn';cont.appendChild(d);}
-    const W=c.isTestata?66:86,H=46;
-    const wrap=document.createElement('div');
-    wrap.className='car-v';
-    wrap.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible;">${c.isTestata?`<path d="M10,${H} L10,12 Q10,3 18,3 L${W-4},3 L${W-4},${H} Z" fill="var(--blue-light)" stroke="#85B7EB" stroke-width="1.5"/>`:`<rect x="2" y="3" width="${W-4}" height="${H-3}" rx="4" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1"/>`}<text x="${W/2}" y="${H/2+3}" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="700" fill="${c.isTestata?'var(--blue)':'var(--text-muted)'}" font-family="-apple-system,sans-serif">${c.label}</text></svg><div class="car-lbl">${c.isTestata?'testata':'motrice'}</div>`;
-    cont.appendChild(wrap);
-  });
-}
-
-function adminBuildCasseTable(casse,graffitiPerCassa){
-  const table=document.getElementById('casse-table');
-  if(!table)return;
-  table.innerHTML='';
-  
-  const ZONE=['parte bassa','parte media','parte alta','estremità'];
-  const TIPI=['tag','scritte','disegni','adesivi','vernice'];
-  const ESTENSIONI=['pochi cm','30-60 cm','1+ metro','mezza superficie','intera superficie'];
-  
-  casse.forEach(c=>{
-    const rowsHtml=c.lati.map(lato=>{
-      const key=`${c.id}-${lato}`;
-      const graffiti=graffitiPerCassa[key]||[];
-      
-      const cbsHtml=graffiti.map((g,idx)=>`
-        <label class="cb-item">
-          <input type="checkbox" class="graffiti-checkbox" data-key="${key}" data-idx="${idx}" checked/>
-          <span>Data: ${g.data} • ${(g.zone||[]).join(', ')} • ${(g.tipologie||[]).join(', ')}</span>
-        </label>
-      `).join('');
-      
-      return `
-        <tr>
-          <td style="width:62px;padding-top:12px;vertical-align:top;"><span class="car-badge${c.isTestata?' testata':''}">${c.label}</span></td>
-          <td>
-            <div style="font-weight:600;margin-bottom:8px;">${lato}</div>
-            <div class="checkboxes">${cbsHtml||'<span style="color:var(--text-muted);font-size:12px;">Nessun graffiti</span>'}</div>
-          </td>
-        </tr>
-      `;
-    }).join('');
-    
-    const tr=document.createElement('tr');
-    tr.innerHTML=rowsHtml;
-    table.appendChild(tr);
-  });
-}
-
-async function adminConfermaSelezione(rotId,rotNum,data,ctrlId){
-  if(!window.adminCurrentRot)return;
-  
-  // Raccogli i graffiti selezionati per la rimozione
-  const selezionati=Array.from(document.querySelectorAll('.graffiti-checkbox:checked')).map(cb=>({
-    key:cb.dataset.key,
-    idx:parseInt(cb.dataset.idx)
-  }));
-  
-  if(!selezionati.length){showToast('Seleziona almeno un graffiti da rimuovere');return;}
-  
-  // Ottieni i dati
-  const segnalazioni=window.adminCurrentRot.segnalazioni;
-  
-  // Marca come non attivi i graffiti NON selezionati (quelli deselezionati)
-  for(let i=0;i<segnalazioni.length;i++){
-    const s=segnalazioni[i];
-    const key=`${s.cassa}-${s.lato}`;
-    const isSelezionato=selezionati.some(sel=>sel.key===key);
-    
-    if(isSelezionato){
-      // Registra nel degraffitaggio
-      await sb.from('degraffitaggio').insert({
-        segnalazione_id:s.id,
-        rotabile_id:rotId,
-        utente_id:adminUtenteId,
-        data_intervento:today()
-      });
-      // Marca come non attivo
-      await sb.from('segnalazioni').update({attiva:false}).eq('id',s.id);
-    }
-  }
-  
-  // Salva il controllo con esito "graffiti"
-  if(ctrlId){
-    await sb.from('controlli').update({esito:'graffiti',updated_at:new Date().toISOString()}).eq('id',ctrlId);
-  }else{
-    await sb.from('controlli').insert({
-      rotabile_id:rotId,
-      impianto_id:allImpianti[0].id,
-      data,
-      esito:'graffiti',
-      updated_at:new Date().toISOString(),
-      utente_id:adminUtenteId
-    });
-  }
-  
-  showToast(`✓ ${rotNum} — ${selezionati.length} graffiti rimossi`);
-  window.adminCurrentRot=null;
-  loadModificaControlli();
-}
-
-async function adminSalvaNota(rotId,rotNum,data){
-  const note=document.getElementById(`note-${rotId}`).value;
-  const {data:existing}=await sb.from('controlli').select('*').eq('rotabile_id',rotId).eq('data',data).maybeSingle();
-  
-  if(existing){
-    await sb.from('controlli').update({note,updated_at:new Date().toISOString()}).eq('id',existing.id);
-    showToast(`✓ ${rotNum} — nota salvata`);
-  }else{
-    showToast('⚠ Seleziona un esito prima di salvare la nota');
-  }
+  if(tab==='report')loadReport();
 }
 
 // ── DEGRAFFITAGGIO ──
 async function loadDegraf(){
+  const list=document.getElementById('degraf-list');
+  list.innerHTML='<div class="loading"><span class="spinner"></span>Caricamento...</div>';
   const {data:segs}=await sb.from('segnalazioni').select('*,rotabili(numero,tipo)').eq('attiva',true).order('data',{ascending:false});
-  if(!segs||!segs.length){document.getElementById('degraf-list').innerHTML='<div class="loading">Nessun graffiti attivo</div>';return;}
-  const byRot={};
-  (segs||[]).forEach(s=>{
-    if(!byRot[s.rotabile_id]){
-      byRot[s.rotabile_id]={numero:s.rotabili?.numero,tipo:s.rotabili?.tipo,id:s.rotabile_id,segnalazioni:[]};
-    }
-    byRot[s.rotabile_id].segnalazioni.push(s);
-  });
-  document.getElementById('degraf-list').innerHTML=Object.values(byRot).map(g=>{
-    const segHtml=g.segnalazioni.map((s,idx)=>`
-      <div style="padding:8px 0;border-bottom:0.5px solid var(--border);font-size:12px;">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-          <input type="checkbox" id="seg-${s.id}" style="width:16px;height:16px;"/>
-          <span>${s.data} • Cassa ${s.cassa} lato ${s.lato} • ${(s.zone||[]).join(', ')} • ${(s.tipologie||[]).join(', ')}</span>
-        </label>
-        ${s.note?`<div style="margin-top:4px;color:var(--text-muted);">Note: ${s.note}</div>`:''}
-        ${s.foto_urls&&s.foto_urls.length>0?`<div style="margin-top:4px;"><a href="${s.foto_urls[0]}" target="_blank" style="color:var(--blue);font-size:11px;">📷 Visualizza foto</a></div>`:''}
+  if(!segs||!segs.length){list.innerHTML='<div class="loading">Nessun graffito attivo 🎉</div>';return;}
+  const grouped={};
+  segs.forEach(s=>{if(!grouped[s.rotabile_id])grouped[s.rotabile_id]={rot:s.rotabili,segs:[]};grouped[s.rotabile_id].segs.push(s);});
+  list.innerHTML=Object.values(grouped).map(g=>`
+    <div class="degraf-item">
+      <div class="degraf-num">${g.rot.numero} <span style="font-size:11px;color:var(--text-faint);">${g.rot.tipo}</span></div>
+      <div class="degraf-det">${g.segs.map(s=>`• ${s.cassa} · lato ${s.lato} · ${(s.tipologie||[]).join(', ')||'—'} · ${(s.zone||[]).join(', ')||'—'} · ${s.estensione||'—'} <span style="color:var(--text-faint)">(${s.data})</span>`).join('<br>')}</div>
+      <div class="row-actions">
+        <button class="btn-sm success" onclick="doDegraf('${g.segs.map(s=>s.id).join(',')}','${g.rot.numero}','${g.segs[0].rotabile_id}')">✓ Degraffitaggio eseguito</button>
       </div>
-    `).join('');
-    return `
-      <div class="degraf-item">
-        <div>
-          <div class="degraf-num">${g.numero}</div>
-          <div class="degraf-det">${g.tipo} • ${g.segnalazioni.length} segnalazione(i) attive</div>
-        </div>
-        <div style="width:100%;border-top:0.5px solid var(--border);padding:8px 0;margin-top:8px;">
-          ${segHtml}
-        </div>
-        <div style="display:flex;gap:6px;margin-top:8px;">
-          <button class="btn-sm primary" onclick="selectAllDegraf('${g.id}')">Seleziona tutto</button>
-          <button class="btn-sm" onclick="deselectAllDegraf('${g.id}')">Deseleziona tutto</button>
-          <button class="btn-sm success" onclick="doDegrafPartial('${g.numero}','${g.id}')">✓ Rimuovi selezionati</button>
-        </div>
-      </div>
-    `;
-  }).join('');
+    </div>`).join('');
 }
 
-function selectAllDegraf(rotId){
-  document.querySelectorAll(`input[id^="seg-"]`).forEach(cb=>cb.checked=true);
-}
-
-function deselectAllDegraf(rotId){
-  document.querySelectorAll(`input[id^="seg-"]`).forEach(cb=>cb.checked=false);
-}
-
-async function doDegrafPartial(rotNum,rotId){
-  const selected=Array.from(document.querySelectorAll(`input[id^="seg-"]:checked`)).map(cb=>cb.id.replace('seg-',''));
-  if(!selected.length){showToast('Seleziona almeno un graffiti');return;}
-  if(!confirm(`Rimuovi ${selected.length} graffiti da ${rotNum}?`))return;
-  
-  for(const segId of selected){
-    await sb.from('degraffitaggio').insert({segnalazione_id:segId,rotabile_id:rotId,utente_id:adminUtenteId,data_intervento:today()});
-    await sb.from('segnalazioni').update({attiva:false}).eq('id',segId);
-  }
-  showToast(`✓ ${selected.length} graffiti rimossi da ${rotNum}`);
+async function doDegraf(idsStr,rotNum,rotId){
+  if(!confirm(`Confermi il degraffitaggio di ${rotNum}?\nLe segnalazioni verranno chiuse.`))return;
+  const ids=idsStr.split(',');
+  await sb.from('segnalazioni').update({attiva:false}).in('id',ids);
+  for(const id of ids){await sb.from('degraffitaggio').insert({segnalazione_id:id,rotabile_id:rotId,utente_id:adminUtenteId,data_intervento:today()});}
+  showToast(`✓ ${rotNum} — degraffitaggio registrato`);
   loadDegraf();
 }
 
@@ -565,7 +253,7 @@ async function loadReport(){
   let q=sb.from('controlli').select('*,rotabili(numero,tipo),impianti(nome)').eq('data',data);
   if(esito)q=q.eq('esito',esito);
   const {data:rows}=await q.order('rotabili(numero)');
-  const bmap={'ok':'<span class="badge badge-ok">✓ OK</span>','graffiti':'<span class="badge badge-graffiti">🔴 graffiti</span>','danno':'<span class="badge badge-danno">⚠ danno</span>'};
+  const bmap={regolare:'<span class="badge badge-ok">✓ regolare</span>',graffiti:'<span class="badge badge-graffiti">⚠ graffiti</span>',danno:'<span class="badge badge-danno">danno</span>',non_verificato:'<span class="badge badge-pending">—</span>'};
   const tbl=document.getElementById('report-table');
   if(!rows||!rows.length){tbl.innerHTML='<div class="loading">Nessun dato per questa data</div>';return;}
   tbl.innerHTML=`<table class="data"><thead><tr><th>Rotabile</th><th>Tipo</th><th>Impianto</th><th>Esito</th><th>Ora</th><th>Note</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${r.rotabili?.numero||'—'}</b></td><td>${r.rotabili?.tipo||'—'}</td><td>${r.impianti?.nome||'—'}</td><td>${bmap[r.esito]||r.esito}</td><td>${r.updated_at?r.updated_at.slice(11,16):''}</td><td style="font-size:12px;color:var(--text-muted);">${r.note||''}</td></tr>`).join('')}</tbody></table>`;
@@ -609,7 +297,7 @@ async function loadAdminRotabili(){
   const {data:rots}=await sb.from('rotabili').select('*').order('tipo').order('numero');
   document.getElementById('admin-rotabili-list').innerHTML=(rots||[]).map(r=>`
     <div class="row">
-      <div><div class="row-text">${r.numero}</div><div class="row-sub">${r.tipo} • ${r.attivo?'attivo':'disattivato'}</div></div>
+      <div><div class="row-text">${r.numero}</div><div class="row-sub">${r.tipo} · ${r.attivo?'attivo':'disattivato'}</div></div>
       <div class="row-actions">
         <button class="btn-sm ${r.attivo?'danger':'success'}" onclick="toggleRotabile('${r.id}',${r.attivo})">${r.attivo?'Disattiva':'Attiva'}</button>
       </div>

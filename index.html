@@ -254,15 +254,18 @@ async function doLogin(){
     return;
   }
   try{
-    const {data,error}=await sb.from('operatori').select('*').eq('impianto_id',imp).eq('password',pwd).single();
+    const {data,error}=await sb.from('operatori').select('*').eq('impianto_id',imp).eq('password',pwd).maybeSingle();
     if(error||!data){
       showLoginErr('Credenziali non valide');
+      console.error('Errore login:',error);
       return;
     }
     session={impianto_id:imp,utente_id:data.id,utente_nome:data.nome};
+    console.log('Login riuscito:',session);
     showApp();
     await loadData();
   }catch(e){
+    console.error('Errore login:',e);
     showLoginErr(e.message);
   }
 }
@@ -294,16 +297,17 @@ function today(){return new Date().toISOString().split('T')[0];}
 
 async function loadData(){
   try{
+    console.log('loadData - session:', session);
     const [rot,ctrl,segnalazioni,storicoSegnalazioni]=await Promise.all([
       sb.from('rotabili').select('*').eq('impianto_id',session.impianto_id),
       sb.from('controlli').select('*').eq('data',today()).eq('impianto_id',session.impianto_id),
       sb.from('segnalazioni').select('*').eq('data',today()).eq('impianto_id',session.impianto_id),
-      sb.from('segnalazioni').select('*').eq('impianto_id',session.impianto_id).eq('attiva',true)  // TUTTI i graffiti attivi, qualsiasi data
+      sb.from('segnalazioni').select('*').eq('impianto_id',session.impianto_id).eq('attiva',true)
     ]);
+    console.log('Dati caricati - rotabili:', rot.data?.length, 'controlli:', ctrl.data?.length);
     rotabili=rot.data||[];
     controlliOggi={};(ctrl.data||[]).forEach(c=>controlliOggi[c.rotabile_id]=c);
     storicoGraffiti={};
-    // Combina graffiti di oggi con quelli storici ancora attivi
     const allSegnalazioni=[...(segnalazioni.data||[]),...(storicoSegnalazioni.data||[])];
     allSegnalazioni.forEach(s=>{
       if(!storicoGraffiti[s.rotabile_id])storicoGraffiti[s.rotabile_id]=[];
@@ -311,7 +315,10 @@ async function loadData(){
     });
     document.getElementById('topbar-sub').textContent=`${today()} • ${session.utente_nome}`;
     renderList();
-  }catch(e){showToast('Errore caricamento dati: '+e.message,4000);}
+  }catch(e){
+    console.error('Errore loadData:',e);
+    showToast('Errore caricamento dati: '+e.message,4000);
+  }
 }
 
 function renderList(){

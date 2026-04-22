@@ -230,19 +230,42 @@ async function loadDegraf(){
   list.innerHTML=Object.values(grouped).map(g=>`
     <div class="degraf-item">
       <div class="degraf-num">${g.rot.numero} <span style="font-size:11px;color:var(--text-faint);">${g.rot.tipo}</span></div>
-      <div class="degraf-det">${g.segs.map(s=>`• ${s.cassa} · lato ${s.lato} · ${(s.tipologie||[]).join(', ')||'—'} · ${(s.zone||[]).join(', ')||'—'} · ${s.estensione||'—'} <span style="color:var(--text-faint)">(${s.data})</span>`).join('<br>')}</div>
+      <div style="margin:8px 0;">
+        ${g.segs.map((s,idx)=>`
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;cursor:pointer;">
+            <input type="checkbox" class="degraf-check" data-id="${s.id}" data-num="${g.rot.numero}" data-rot="${g.segs[0].rotabile_id}" checked/>
+            <span>${s.cassa} · ${s.lato} · ${(s.tipologie||[]).join(', ')||'—'} · ${(s.zone||[]).join(', ')||'—'} · ${s.estensione||'—'} <span style="color:var(--text-faint)">(${s.data})</span></span>
+          </label>
+        `).join('')}
+      </div>
       <div class="row-actions">
-        <button class="btn-sm success" onclick="doDegraf('${g.segs.map(s=>s.id).join(',')}','${g.rot.numero}','${g.segs[0].rotabile_id}')">✓ Degraffitaggio eseguito</button>
+        <button class="btn-sm" onclick="selectAllDegraf('${g.segs[0].rotabile_id}')">Seleziona tutto</button>
+        <button class="btn-sm" onclick="deselectAllDegraf('${g.segs[0].rotabile_id}')">Deseleziona</button>
+        <button class="btn-sm success" onclick="doDegraf('${g.segs[0].rotabile_id}')">✓ Rimuovi selezionati</button>
       </div>
     </div>`).join('');
 }
 
-async function doDegraf(idsStr,rotNum,rotId){
-  if(!confirm(`Confermi il degraffitaggio di ${rotNum}?\nLe segnalazioni verranno chiuse.`))return;
-  const ids=idsStr.split(',');
-  await sb.from('segnalazioni').update({attiva:false}).in('id',ids);
-  for(const id of ids){await sb.from('degraffitaggio').insert({segnalazione_id:id,rotabile_id:rotId,utente_id:adminUtenteId,data_intervento:today()});}
-  showToast(`✓ ${rotNum} — degraffitaggio registrato`);
+function selectAllDegraf(rotId){
+  document.querySelectorAll('.degraf-check').forEach(cb=>cb.checked=true);
+}
+
+function deselectAllDegraf(rotId){
+  document.querySelectorAll('.degraf-check').forEach(cb=>cb.checked=false);
+}
+
+async function doDegraf(rotId){
+  const selected=Array.from(document.querySelectorAll('.degraf-check:checked'));
+  if(!selected.length){showToast('Seleziona almeno un graffito');return;}
+  const rotNum=selected[0].dataset.num;
+  if(!confirm(`Rimuovi ${selected.length} graffiti da ${rotNum}?`))return;
+  
+  for(const cb of selected){
+    const segId=cb.dataset.id;
+    await sb.from('degraffitaggio').insert({segnalazione_id:segId,rotabile_id:rotId,utente_id:adminUtenteId,data_intervento:today()});
+    await sb.from('segnalazioni').update({attiva:false}).eq('id',segId);
+  }
+  showToast(`✓ ${rotNum} — ${selected.length} graffiti rimossi`);
   loadDegraf();
 }
 

@@ -254,13 +254,27 @@ async function doLogin(){
     return;
   }
   try{
-    const {data,error}=await sb.from('operatori').select('*').eq('impianto_id',imp).eq('password',pwd).maybeSingle();
-    if(error||!data){
-      showLoginErr('Credenziali non valide');
-      console.error('Errore login:',error);
+    // Calcola l'hash della password
+    const hash=await sha256(pwd);
+    console.log('Password hash calcolato:', hash);
+    
+    // Cerca un operatore con questa password
+    const {data,error}=await sb.from('utenti').select('*').eq('ruolo','operatore').eq('password_hash',hash).eq('attivo',true).maybeSingle();
+    
+    if(error){
+      console.error('Errore query:',error);
+      showLoginErr('Errore: '+error.message);
       return;
     }
+    
+    if(!data){
+      showLoginErr('Credenziali non valide');
+      console.log('Nessun operatore trovato con questo hash');
+      return;
+    }
+    
     session={impianto_id:imp,utente_id:data.id,utente_nome:data.nome};
+    isAdmin=false;
     console.log('Login riuscito:',session);
     showApp();
     await loadData();
@@ -268,6 +282,11 @@ async function doLogin(){
     console.error('Errore login:',e);
     showLoginErr(e.message);
   }
+}
+
+async function sha256(s){
+  const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');
 }
 
 function doLogout(){

@@ -213,7 +213,7 @@ async function doLogin(){
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('topbar-sub').textContent=today();
   document.getElementById('filter-data').value=today();
-  loadDegraf();
+  loadDashboard();
 }
 
 function doLogout(){adminUtenteId=null;document.getElementById('login-screen').classList.remove('hidden');document.getElementById('app').classList.add('hidden');document.getElementById('login-password').value='';}
@@ -224,56 +224,28 @@ function showTab(tab){
     document.getElementById('tab-'+t).classList.toggle('active',t===tab);
   });
   if(tab==='dashboard')loadDashboard();
+  if(tab==='degraf')loadDegraf();
   if(tab==='rotabili')loadAdminRotabili();
   if(tab==='impianti')loadAdminImpianti();
   if(tab==='report')loadReport();
 }
 
-// ── DEGRAFFITAGGIO ──
+// ── DASHBOARD ──
 async function loadDashboard(){
   const {data:rots}=await sb.from('rotabili').select('*').eq('attivo',true).order('numero');
   const {data:graffiti}=await sb.from('segnalazioni').select('*').eq('attiva',true);
-  
   const graffitiMap={};
-  (graffiti||[]).forEach(g=>{
-    if(!graffitiMap[g.rotabile_id])graffitiMap[g.rotabile_id]=[];
-    graffitiMap[g.rotabile_id].push(g);
-  });
-  
-  const content=(rots||[]).map(r=>{
-    const graffiti_count=graffitiMap[r.id]?.length||0;
-    const bg=graffiti_count>0?'background:var(--orange-light);border-left:4px solid var(--orange);':'background:var(--green-light);';
-    const status=graffiti_count>0?`<span style="color:var(--orange);font-weight:700;">🔴 ${graffiti_count} GRAFFITI ATTIVI</span>`:`<span style="color:var(--green);font-weight:700;">✓ PULITO</span>`;
-    return `
-      <div class="row" style="${bg}padding-left:10px;">
-        <div>
-          <div class="row-text">${r.numero}</div>
-          <div class="row-sub">${r.tipo}</div>
-          <div style="margin-top:4px;font-size:12px;">${status}</div>
-        </div>
-        ${graffiti_count>0?`<div class="row-actions"><button class="btn-sm warning" onclick="alert('Graffiti:\\n${(graffitiMap[r.id]||[]).map(g=>`- Cassa ${g.cassa}, lato ${g.lato}`).join('\\n')}')">Dettagli</button></div>`:''}
-      </div>
-    `;
-  }).join('');
-  
+  (graffiti||[]).forEach(g=>{if(!graffitiMap[g.rotabile_id])graffitiMap[g.rotabile_id]=[];graffitiMap[g.rotabile_id].push(g);});
   const graffiti_totali=(graffiti||[]).length;
   const rotabili_graffitati=Object.keys(graffitiMap).length;
   const rotabili_puliti=(rots||[]).length-rotabili_graffitati;
-  
-  const summary=`
-    <div class="row" style="background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;">
-      <div>
-        <div style="font-size:14px;font-weight:700;margin-bottom:8px;">Riepilogo</div>
-        <div style="font-size:13px;margin:4px 0;"><span style="color:var(--orange);font-weight:700;">🔴 ${graffiti_totali}</span> graffiti attivi</div>
-        <div style="font-size:13px;margin:4px 0;"><span style="color:var(--orange);font-weight:700;">⚠️ ${rotabili_graffitati}</span> rotabili graffitati</div>
-        <div style="font-size:13px;margin:4px 0;"><span style="color:var(--green);font-weight:700;">✓ ${rotabili_puliti}</span> rotabili puliti</div>
-      </div>
-    </div>
-  `;
-  
+  const summary=`<div class="row" style="background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;"><div><div style="font-size:14px;font-weight:700;margin-bottom:8px;">Riepilogo</div><div style="font-size:13px;margin:4px 0;"><span style="color:var(--orange);font-weight:700;">🔴 ${graffiti_totali}</span> graffiti attivi</div><div style="font-size:13px;margin:4px 0;"><span style="color:var(--orange);font-weight:700;">⚠️ ${rotabili_graffitati}</span> rotabili graffitati</div><div style="font-size:13px;margin:4px 0;"><span style="color:var(--green);font-weight:700;">✓ ${rotabili_puliti}</span> rotabili puliti</div></div></div>`;
+  const content=(rots||[]).map(r=>{const graffiti_count=graffitiMap[r.id]?.length||0;const bg=graffiti_count>0?'background:var(--orange-light);border-left:4px solid var(--orange);':'background:var(--green-light);';const status=graffiti_count>0?`<span style="color:var(--orange);font-weight:700;">🔴 ${graffiti_count} GRAFFITI ATTIVI</span>`:`<span style="color:var(--green);font-weight:700;">✓ PULITO</span>`;return `<div class="row" style="${bg}padding-left:10px;"><div><div class="row-text">${r.numero}</div><div class="row-sub">${r.tipo}</div><div style="margin-top:4px;font-size:12px;">${status}</div></div></div>`;}).join('');
   document.getElementById('dashboard-content').innerHTML=summary+'<div class="card-title" style="margin-top:12px;margin-bottom:8px;">Dettaglio rotabili</div>'+content;
 }
 
+// ── DEGRAFFITAGGIO ──
+async function loadDegraf(){
   const list=document.getElementById('degraf-list');
   list.innerHTML='<div class="loading"><span class="spinner"></span>Caricamento...</div>';
   const {data:segs}=await sb.from('segnalazioni').select('*,rotabili(numero,tipo)').eq('attiva',true).order('data',{ascending:false});
@@ -283,59 +255,19 @@ async function loadDashboard(){
   list.innerHTML=Object.values(grouped).map(g=>`
     <div class="degraf-item">
       <div class="degraf-num">${g.rot.numero} <span style="font-size:11px;color:var(--text-faint);">${g.rot.tipo}</span></div>
-      <div style="margin:8px 0;">
-        ${g.segs.map((s,idx)=>`
-          <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;cursor:pointer;">
-            <input type="checkbox" class="degraf-check" data-id="${s.id}" data-num="${g.rot.numero}" data-rot="${g.segs[0].rotabile_id}" checked/>
-            <span>${s.cassa} · ${s.lato} · ${(s.tipologie||[]).join(', ')||'—'} · ${(s.zone||[]).join(', ')||'—'} · ${s.estensione||'—'} <span style="color:var(--text-faint)">(${s.data})</span></span>
-          </label>
-        `).join('')}
-      </div>
+      <div class="degraf-det">${g.segs.map(s=>`• ${s.cassa} · lato ${s.lato} · ${(s.tipologie||[]).join(', ')||'—'} · ${(s.zone||[]).join(', ')||'—'} · ${s.estensione||'—'} <span style="color:var(--text-faint)">(${s.data})</span>`).join('<br>')}</div>
       <div class="row-actions">
-        <button class="btn-sm" onclick="selectAllDegraf('${g.segs[0].rotabile_id}')">Seleziona tutto</button>
-        <button class="btn-sm" onclick="deselectAllDegraf('${g.segs[0].rotabile_id}')">Deseleziona</button>
-        <button class="btn-sm success" onclick="doDegraf('${g.segs[0].rotabile_id}')">✓ Rimuovi selezionati</button>
+        <button class="btn-sm success" onclick="doDegraf('${g.segs.map(s=>s.id).join(',')}','${g.rot.numero}','${g.segs[0].rotabile_id}')">✓ Degraffitaggio eseguito</button>
       </div>
     </div>`).join('');
 }
 
-function selectAllDegraf(rotId){
-  document.querySelectorAll('.degraf-check').forEach(cb=>cb.checked=true);
-}
-
-function deselectAllDegraf(rotId){
-  document.querySelectorAll('.degraf-check').forEach(cb=>cb.checked=false);
-}
-
-async function doDegraf(rotId){
-  const selected=Array.from(document.querySelectorAll('.degraf-check:checked'));
-  if(!selected.length){showToast('Seleziona almeno un graffito');return;}
-  const rotNum=selected[0].dataset.num;
-  if(!confirm(`Rimuovi ${selected.length} graffiti da ${rotNum}?`))return;
-  
-  for(const cb of selected){
-    const segId=cb.dataset.id;
-    await sb.from('degraffitaggio').insert({segnalazione_id:segId,rotabile_id:rotId,utente_id:adminUtenteId,data_intervento:today()});
-    await sb.from('segnalazioni').update({attiva:false}).eq('id',segId);
-  }
-  
-  // Verifica se ci sono ancora graffiti attivi per questo rotabile
-  const {data:remaining}=await sb.from('segnalazioni').select('*').eq('rotabile_id',rotId).eq('attiva',true);
-  
-  if(!remaining||remaining.length===0){
-    // Nessun graffito attivo: cambia lo stato del controllo di oggi a "ok"
-    const {data:ctrl}=await sb.from('controlli').select('*').eq('rotabile_id',rotId).eq('data',today()).maybeSingle();
-    if(ctrl){
-      await sb.from('controlli').update({esito:'ok'}).eq('id',ctrl.id);
-    }else{
-      // Se non esiste controllo di oggi, creane uno con esito "ok"
-      await sb.from('controlli').insert({rotabile_id:rotId,impianto_id:session?.impianto_id||allImpianti[0].id,data:today(),esito:'ok',updated_at:new Date().toISOString(),utente_id:adminUtenteId});
-    }
-    showToast(`✓ ${rotNum} — ${selected.length} graffiti rimossi • Stato → OK`);
-  }else{
-    showToast(`✓ ${rotNum} — ${selected.length} graffiti rimossi (rimangono ${remaining.length} attivi)`);
-  }
-  
+async function doDegraf(idsStr,rotNum,rotId){
+  if(!confirm(`Confermi il degraffitaggio di ${rotNum}?\nLe segnalazioni verranno chiuse.`))return;
+  const ids=idsStr.split(',');
+  await sb.from('segnalazioni').update({attiva:false}).in('id',ids);
+  for(const id of ids){await sb.from('degraffitaggio').insert({segnalazione_id:id,rotabile_id:rotId,utente_id:adminUtenteId,data_intervento:today()});}
+  showToast(`✓ ${rotNum} — degraffitaggio registrato`);
   loadDegraf();
 }
 

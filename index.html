@@ -278,9 +278,12 @@ function renderList(){
 }
 
 function rotHtml(r){
-  const ctrl=controlliOggi[r.id];const esito=ctrl?ctrl.esito:'non_verificato';const hasS=storicoGraffiti[r.id]?.length>0;
+  const ctrl=controlliOggi[r.id];
+  const graffiti_attivi=(storicoGraffiti[r.id]||[]).filter(s=>s.attiva);
+  const esito=ctrl?ctrl.esito:'non_verificato';
   const bmap={non_verificato:'<span class="badge badge-pending">da verificare</span>',regolare:'<span class="badge badge-ok">✓ regolare</span>',graffiti:'<span class="badge badge-graffiti">⚠ graffiti</span>',danno:'<span class="badge badge-danno">danno</span>'};
-  return `<div class="rot-item" onclick="openRotabile('${r.id}')"><div><div class="rot-num">${r.numero}${hasS?'<span class="storico-dot"></span>':''}</div><div class="rot-meta">${r.tipo}</div></div>${bmap[esito]||''}</div>`;
+  const row_style=graffiti_attivi.length>0?'background:var(--orange-light);border-left:4px solid var(--orange);padding-left:10px;':' ';
+  return `<div class="rot-item" style="${row_style}" onclick="openRotabile('${r.id}')"><div><div class="rot-num">${r.numero}${graffiti_attivi.length>0?'<span class="storico-dot"></span>':''}</div><div class="rot-meta">${r.tipo}${graffiti_attivi.length>0?`<span style="color:var(--orange);font-weight:700;">🔴 ${graffiti_attivi.length} GRAFFITI</span>`:''}</div></div>${graffiti_attivi.length>0?`<span class="badge badge-graffiti" style="font-weight:700;">⚠ ${graffiti_attivi.length} ATTIVI</span>`:bmap[esito]||''}</div>`;
 }
 
 async function openRotabile(rid){

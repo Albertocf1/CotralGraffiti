@@ -235,13 +235,32 @@ async function loadDashboard(){
   const {data:rots}=await sb.from('rotabili').select('*').eq('attivo',true).order('numero');
   const {data:graffiti}=await sb.from('segnalazioni').select('*').eq('attiva',true);
   const graffitiMap={};
-  (graffiti||[]).forEach(g=>{if(!graffitiMap[g.rotabile_id])graffitiMap[g.rotabile_id]=[];graffitiMap[g.rotabile_id].push(g);});
+  (graffiti||[]).forEach(g=>{
+    if(!graffitiMap[g.rotabile_id])graffitiMap[g.rotabile_id]=[];
+    graffitiMap[g.rotabile_id].push(g);
+  });
   const graffiti_totali=(graffiti||[]).length;
   const rotabili_graffitati=Object.keys(graffitiMap).length;
   const rotabili_puliti=(rots||[]).length-rotabili_graffitati;
-  const summary=`<div class="row" style="background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;"><div><div style="font-size:14px;font-weight:700;margin-bottom:8px;">Riepilogo</div><div style="font-size:13px;margin:4px 0;"><span style="color:var(--orange);font-weight:700;">🔴 ${graffiti_totali}</span> graffiti attivi</div><div style="font-size:13px;margin:4px 0;"><span style="color:var(--orange);font-weight:700;">⚠️ ${rotabili_graffitati}</span> rotabili graffitati</div><div style="font-size:13px;margin:4px 0;"><span style="color:var(--green);font-weight:700;">✓ ${rotabili_puliti}</span> rotabili puliti</div></div></div>`;
-  const content=(rots||[]).map(r=>{const graffiti_count=graffitiMap[r.id]?.length||0;const bg=graffiti_count>0?'background:var(--orange-light);border-left:4px solid var(--orange);':'background:var(--green-light);';const status=graffiti_count>0?`<span style="color:var(--orange);font-weight:700;">🔴 ${graffiti_count} GRAFFITI ATTIVI</span>`:`<span style="color:var(--green);font-weight:700;">✓ PULITO</span>`;return `<div class="row" style="${bg}padding-left:10px;"><div><div class="row-text">${r.numero}</div><div class="row-sub">${r.tipo}</div><div style="margin-top:4px;font-size:12px;">${status}</div></div></div>`;}).join('');
-  document.getElementById('dashboard-content').innerHTML=summary+'<div class="card-title" style="margin-top:12px;margin-bottom:8px;">Dettaglio rotabili</div>'+content;
+  
+  let summary=`<div class="row" style="background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;">`;
+  summary+=`<div><div style="font-size:14px;font-weight:700;margin-bottom:8px;">Riepilogo</div>`;
+  summary+=`<div style="font-size:13px;margin:4px 0;"><span style="color:var(--orange);font-weight:700;">🔴 ${graffiti_totali}</span> graffiti attivi</div>`;
+  summary+=`<div style="font-size:13px;margin:4px 0;"><span style="color:var(--orange);font-weight:700;">⚠️ ${rotabili_graffitati}</span> rotabili graffitati</div>`;
+  summary+=`<div style="font-size:13px;margin:4px 0;"><span style="color:var(--green);font-weight:700;">✓ ${rotabili_puliti}</span> rotabili puliti</div>`;
+  summary+=`</div></div>`;
+  
+  let content='';
+  (rots||[]).forEach(r=>{
+    const graffiti_count=graffitiMap[r.id]?.length||0;
+    const bg=graffiti_count>0?'background:var(--orange-light);border-left:4px solid var(--orange);':'background:var(--green-light);';
+    const status=graffiti_count>0?`🔴 ${graffiti_count} GRAFFITI ATTIVI`:`✓ PULITO`;
+    const statusColor=graffiti_count>0?'color:var(--orange);':'color:var(--green);';
+    content+=`<div class="row" style="${bg}padding-left:10px;"><div><div class="row-text">${r.numero}</div><div class="row-sub">${r.tipo}</div><div style="margin-top:4px;font-size:12px;${statusColor}font-weight:700;">${status}</div></div></div>`;
+  });
+  
+  const html=summary+'<div class="card-title" style="margin-top:12px;margin-bottom:8px;">Dettaglio rotabili</div>'+content;
+  document.getElementById('dashboard-content').innerHTML=html;
 }
 
 // ── DEGRAFFITAGGIO ──

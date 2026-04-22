@@ -292,6 +292,26 @@ async function openRotabile(rid){
   fotoFiles={};
   document.getElementById('list-view').classList.add('hidden');
   document.getElementById('scheda-view').classList.remove('hidden');
+  
+  // Controlla se ci sono graffiti attivi
+  const graffiti_attivi=(storicoGraffiti[rid]||[]).filter(s=>s.attiva);
+  
+  if(graffiti_attivi.length>0){
+    // Blocca la modifica
+    document.getElementById('scheda-view').innerHTML=`
+      <button class="back-btn" onclick="backToList()">← Indietro</button>
+      <div class="card" style="background:var(--red-light);border:0.5px solid var(--red);padding:16px;text-align:center;margin-top:12px;">
+        <div style="font-size:18px;font-weight:700;color:var(--red);margin-bottom:8px;">🔴 GRAFFITI ATTIVI</div>
+        <div style="font-size:14px;color:var(--red);margin-bottom:12px;">Questo rotabile ha <strong>${graffiti_attivi.length}</strong> graffiti ancora attivi.</div>
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">
+          <strong>Non puoi modificare lo stato finché i graffiti non vengono rimossi.</strong><br/>
+          <br/>Contatta l'admin per rimuovere i graffiti nel pannello Admin → Degraffitaggio.
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
   document.getElementById('scheda-num').textContent=currentRotabile.numero;
   document.getElementById('scheda-meta').textContent=`${currentRotabile.tipo} · ${session.impianto_nome} · ${today()}`;
   document.getElementById('note-generali').value='';

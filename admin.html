@@ -74,6 +74,27 @@ table.data tr:last-child td{border-bottom:none;}
 .esito-selector button{flex:1;padding:6px 8px;font-size:11px;font-weight:600;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:var(--bg);color:var(--text-muted);cursor:pointer;min-height:32px;}
 .esito-selector button:hover{background:var(--border-strong);}
 .esito-selector button.active{background:var(--blue);color:white;border-color:var(--blue);}
+.esito-btn-big{flex:1;padding:16px 12px;font-size:14px;font-weight:700;border-radius:var(--radius-sm);border:0.5px solid var(--border-strong);background:var(--bg);color:var(--text-muted);cursor:pointer;min-height:60px;text-align:center;transition:all 0.15s;}
+.esito-btn-big:hover{opacity:0.8;}
+.esito-btn-big.active{color:white;font-weight:700;}
+.esito-btn-big.active-ok{background:var(--green);color:white;border-color:var(--green-mid);}
+.esito-btn-big.active-graffiti{background:var(--orange);color:white;border-color:var(--orange-dark);}
+.esito-btn-big.active-danno{background:var(--amber);color:white;border-color:var(--amber);}
+.cb-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);cursor:pointer;background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;min-height:40px;transition:all 0.15s;user-select:none;margin-bottom:6px;}
+.cb-item.checked{background:var(--orange-light);border-color:var(--orange);color:var(--orange-dark);font-weight:600;}
+.cb-item input[type=checkbox]{width:16px;height:16px;accent-color:var(--orange);flex-shrink:0;}
+.checkboxes{display:flex;flex-wrap:wrap;gap:6px;}
+.casse-table{width:100%;border-collapse:collapse;font-size:13px;}
+.casse-table tr{border-bottom:0.5px solid var(--border);}
+.casse-table tr:last-child{border-bottom:none;}
+.casse-table td{padding:10px 4px;vertical-align:top;}
+.car-badge{font-size:12px;font-weight:700;background:var(--bg);border:0.5px solid var(--border-strong);border-radius:var(--radius-sm);padding:4px 8px;display:inline-block;min-width:52px;text-align:center;}
+.car-badge.testata{background:var(--blue-light);border-color:#85B7EB;color:var(--blue);}
+.car-v{display:flex;flex-direction:column;align-items:center;}
+.car-lbl{font-size:10px;color:var(--text-faint);margin-top:4px;}
+.convoy-wrap{overflow-x:auto;padding:10px 0 6px;}
+.convoy{display:flex;align-items:center;min-width:max-content;}
+.conn{width:8px;height:3px;background:var(--border-strong);margin-top:-20px;}
 </style>
 </head>
 <body>
@@ -107,16 +128,7 @@ table.data tr:last-child td{border-bottom:none;}
 
   <!-- MODIFICA CONTROLLI (NEW) -->
   <div id="view-modifica">
-    <div class="card">
-      <div class="card-title">Modifica esiti controlli</div>
-      <div class="filter-row">
-        <input type="date" id="filter-modifica-data" onchange="loadModificaControlli()"/>
-        <select id="filter-modifica-impianto" onchange="loadModificaControlli()">
-          <option value="">Tutti gli impianti</option>
-        </select>
-      </div>
-      <div id="modifica-list"><div class="loading"><span class="spinner"></span>Caricamento...</div></div>
-    </div>
+    <div id="modifica-content"></div>
   </div>
 
   <!-- DEGRAFFITAGGIO -->
@@ -260,33 +272,228 @@ async function init(){
 async function loadModificaControlli(){
   const data=document.getElementById('filter-modifica-data').value||today();
   const impianto=document.getElementById('filter-modifica-impianto').value;
-  let q=sb.from('controlli').select('*,rotabili(numero,tipo),impianti(nome)').eq('data',data);
+  let q=sb.from('rotabili').select('*').eq('attivo',true);
   if(impianto)q=q.eq('impianto_id',impianto);
-  const {data:rows}=await q.order('rotabili(numero)');
-  if(!rows||!rows.length){
-    document.getElementById('modifica-list').innerHTML='<div class="loading">Nessun controllo per questa data</div>';
-    return;
-  }
-  document.getElementById('modifica-list').innerHTML=(rows||[]).map(r=>`
-    <div class="row">
-      <div>
-        <div class="row-text">${r.rotabili?.numero}</div>
-        <div class="row-sub">${r.rotabili?.tipo} • ${r.impianti?.nome}</div>
-        <div class="esito-selector">
-          <button class="btn-sm${r.esito==='ok'?' active':''}" onclick="adminModificaEsito('${r.id}','ok')">✓ OK</button>
-          <button class="btn-sm${r.esito==='graffiti'?' active':''}" onclick="adminModificaEsito('${r.id}','graffiti')">🔴 Graffiti</button>
-          <button class="btn-sm${r.esito==='danno'?' active':''}" onclick="adminModificaEsito('${r.id}','danno')">⚠ Danno</button>
-        </div>
+  const {data:rots}=await q.order('numero');
+  
+  // Carica controlli e graffiti attivi per questa data
+  let qCtrl=sb.from('controlli').select('*').eq('data',data);
+  if(impianto)qCtrl=qCtrl.eq('impianto_id',impianto);
+  const {data:controlli}=await qCtrl;
+  
+  const {data:segnalazioni}=await sb.from('segnalazioni').select('*').eq('impianto_id',impianto||allImpianti[0].id).eq('attiva',true);
+  
+  const ctrlMap={};(controlli||[]).forEach(c=>ctrlMap[c.rotabile_id]=c);
+  const graffitiMap={};(segnalazioni||[]).forEach(s=>{if(!graffitiMap[s.rotabile_id])graffitiMap[s.rotabile_id]=[];graffitiMap[s.rotabile_id].push(s);});
+  
+  const html=`
+    <button class="back-btn" onclick="showTab('degraf')">← Indietro</button>
+    <div class="card">
+      <div class="card-title">Modifica controlli</div>
+      <div class="filter-row">
+        <input type="date" id="filter-modifica-data" value="${data}" onchange="loadModificaControlli()"/>
+        <select id="filter-modifica-impianto" onchange="loadModificaControlli()">
+          <option value="">Tutti gli impianti</option>
+          ${allImpianti.map(i=>`<option value="${i.id}" ${impianto===i.id?'selected':''}>${i.nome}</option>`).join('')}
+        </select>
       </div>
     </div>
-  `).join('');
+    ${(rots||[]).map(r=>{
+      const ctrl=ctrlMap[r.id];
+      const graffiti=graffitiMap[r.id]||[];
+      return `
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:14px;background:var(--bg);">
+            <div style="font-size:16px;font-weight:700;margin-bottom:4px;">${r.numero}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${r.tipo}</div>
+            ${graffiti.length>0?`<div style="font-size:11px;color:var(--orange);margin-top:4px;font-weight:600;">🔴 ${graffiti.length} graffiti attivi</div>`:''}
+          </div>
+          <div style="padding:12px;border-top:0.5px solid var(--border);">
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+              <button class="esito-btn-big ${ctrl?.esito==='ok'?'active-ok':''}" onclick="adminSalvaEsito('${r.id}','${r.numero}','ok','${data}')">✓<br/>OK</button>
+              <button class="esito-btn-big ${ctrl?.esito==='graffiti'?'active-graffiti':''}" onclick="adminSalvaEsito('${r.id}','${r.numero}','graffiti','${data}')">🔴<br/>Graffiti</button>
+              <button class="esito-btn-big ${ctrl?.esito==='danno'?'active-danno':''}" onclick="adminSalvaEsito('${r.id}','${r.numero}','danno','${data}')">⚠<br/>Danno</button>
+            </div>
+            <input type="text" class="note-input" id="note-${r.id}" placeholder="Note..." value="${ctrl?.note||''}" style="margin:0;"/>
+            <button class="btn-sm primary" onclick="adminSalvaNota('${r.id}','${r.numero}','${data}')" style="width:100%;margin-top:8px;">Salva nota</button>
+          </div>
+        </div>
+      `;
+    }).join('')}
+  `;
+  document.getElementById('modifica-content').innerHTML=html;
 }
 
-async function adminModificaEsito(ctrlId,nuovoEsito){
-  if(!confirm(`Modifica esito a "${nuovoEsito}"?`))return;
-  await sb.from('controlli').update({esito:nuovoEsito}).eq('id',ctrlId);
-  showToast('✓ Esito modificato');
+async function adminSalvaEsito(rotId,rotNum,esito,data){
+  const {data:existing}=await sb.from('controlli').select('*').eq('rotabile_id',rotId).eq('data',data).maybeSingle();
+  const note=document.getElementById(`note-${rotId}`).value;
+  
+  // Se seleziona "graffiti", apri la vista dettagliata
+  if(esito==='graffiti'){
+    await adminApriFotoDettagli(rotId,rotNum,data,existing?.id);
+    return;
+  }
+  
+  if(existing){
+    await sb.from('controlli').update({esito,note,updated_at:new Date().toISOString()}).eq('id',existing.id);
+  }else{
+    await sb.from('controlli').insert({rotabile_id:rotId,impianto_id:allImpianti[0].id,data,esito,note,updated_at:new Date().toISOString(),utente_id:adminUtenteId});
+  }
+  showToast(`✓ ${rotNum} — esito "${esito}" salvato`);
   loadModificaControlli();
+}
+
+async function adminApriFotoDettagli(rotId,rotNum,data,ctrlId){
+  const {data:rot}=await sb.from('rotabili').select('*').eq('id',rotId).maybeSingle();
+  const {data:segnalazioni}=await sb.from('segnalazioni').select('*').eq('rotabile_id',rotId).eq('attiva',true);
+  
+  if(!rot)return;
+  
+  const casse=JSON.parse(rot.casse_json||'[]');
+  const graffitiPerCassa={};
+  (segnalazioni||[]).forEach(s=>{
+    const key=`${s.cassa}-${s.lato}`;
+    if(!graffitiPerCassa[key])graffitiPerCassa[key]=[];
+    graffitiPerCassa[key].push(s);
+  });
+  
+  let html=`<button class="back-btn" onclick="loadModificaControlli()">← Indietro a modifica</button>`;
+  html+=`<div class="card"><div style="padding:14px;"><div style="font-size:18px;font-weight:700;margin-bottom:4px;">${rotNum}</div><div style="font-size:12px;color:var(--text-muted);">Rimozione graffiti selettiva</div></div></div>`;
+  
+  // Mostra le casse
+  html+=`<div class="card" style="padding:14px;"><div class="card-title">Composizione</div><div class="convoy-wrap"><div class="convoy" id="convoy-svg"></div></div></div>`;
+  
+  // Tabella graffiti per cassa
+  html+=`<div class="card"><table class="casse-table" id="casse-table"></table></div>`;
+  
+  html+=`<div class="card" style="padding:14px;"><button class="btn-sm primary" onclick="adminConfermaSelezione('${rotId}','${rotNum}','${data}','${ctrlId||''}')" style="width:100%;">✓ Conferma selezione e salva</button></div>`;
+  
+  document.getElementById('modifica-content').innerHTML=html;
+  
+  // Disegna le casse
+  setTimeout(()=>{
+    adminDrawConvoy(casse);
+    adminBuildCasseTable(casse,graffitiPerCassa);
+  },100);
+  
+  // Salva i dati globali per il salvataggio successivo
+  window.adminCurrentRot={rotId,rotNum,data,ctrlId,casse,segnalazioni};
+}
+
+function adminDrawConvoy(casse){
+  const cont=document.getElementById('convoy-svg');
+  if(!cont)return;
+  cont.innerHTML='';
+  casse.forEach((c,i)=>{
+    if(i>0){const d=document.createElement('div');d.className='conn';cont.appendChild(d);}
+    const W=c.isTestata?66:86,H=46;
+    const wrap=document.createElement('div');
+    wrap.className='car-v';
+    wrap.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible;">${c.isTestata?`<path d="M10,${H} L10,12 Q10,3 18,3 L${W-4},3 L${W-4},${H} Z" fill="var(--blue-light)" stroke="#85B7EB" stroke-width="1.5"/>`:`<rect x="2" y="3" width="${W-4}" height="${H-3}" rx="4" fill="var(--bg)" stroke="var(--border-strong)" stroke-width="1"/>`}<text x="${W/2}" y="${H/2+3}" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="700" fill="${c.isTestata?'var(--blue)':'var(--text-muted)'}" font-family="-apple-system,sans-serif">${c.label}</text></svg><div class="car-lbl">${c.isTestata?'testata':'motrice'}</div>`;
+    cont.appendChild(wrap);
+  });
+}
+
+function adminBuildCasseTable(casse,graffitiPerCassa){
+  const table=document.getElementById('casse-table');
+  if(!table)return;
+  table.innerHTML='';
+  
+  const ZONE=['parte bassa','parte media','parte alta','estremità'];
+  const TIPI=['tag','scritte','disegni','adesivi','vernice'];
+  const ESTENSIONI=['pochi cm','30-60 cm','1+ metro','mezza superficie','intera superficie'];
+  
+  casse.forEach(c=>{
+    const rowsHtml=c.lati.map(lato=>{
+      const key=`${c.id}-${lato}`;
+      const graffiti=graffitiPerCassa[key]||[];
+      
+      const cbsHtml=graffiti.map((g,idx)=>`
+        <label class="cb-item">
+          <input type="checkbox" class="graffiti-checkbox" data-key="${key}" data-idx="${idx}" checked/>
+          <span>Data: ${g.data} • ${(g.zone||[]).join(', ')} • ${(g.tipologie||[]).join(', ')}</span>
+        </label>
+      `).join('');
+      
+      return `
+        <tr>
+          <td style="width:62px;padding-top:12px;vertical-align:top;"><span class="car-badge${c.isTestata?' testata':''}">${c.label}</span></td>
+          <td>
+            <div style="font-weight:600;margin-bottom:8px;">${lato}</div>
+            <div class="checkboxes">${cbsHtml||'<span style="color:var(--text-muted);font-size:12px;">Nessun graffiti</span>'}</div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    
+    const tr=document.createElement('tr');
+    tr.innerHTML=rowsHtml;
+    table.appendChild(tr);
+  });
+}
+
+async function adminConfermaSelezione(rotId,rotNum,data,ctrlId){
+  if(!window.adminCurrentRot)return;
+  
+  // Raccogli i graffiti selezionati per la rimozione
+  const selezionati=Array.from(document.querySelectorAll('.graffiti-checkbox:checked')).map(cb=>({
+    key:cb.dataset.key,
+    idx:parseInt(cb.dataset.idx)
+  }));
+  
+  if(!selezionati.length){showToast('Seleziona almeno un graffiti da rimuovere');return;}
+  
+  // Ottieni i dati
+  const segnalazioni=window.adminCurrentRot.segnalazioni;
+  
+  // Marca come non attivi i graffiti NON selezionati (quelli deselezionati)
+  for(let i=0;i<segnalazioni.length;i++){
+    const s=segnalazioni[i];
+    const key=`${s.cassa}-${s.lato}`;
+    const isSelezionato=selezionati.some(sel=>sel.key===key);
+    
+    if(isSelezionato){
+      // Registra nel degraffitaggio
+      await sb.from('degraffitaggio').insert({
+        segnalazione_id:s.id,
+        rotabile_id:rotId,
+        utente_id:adminUtenteId,
+        data_intervento:today()
+      });
+      // Marca come non attivo
+      await sb.from('segnalazioni').update({attiva:false}).eq('id',s.id);
+    }
+  }
+  
+  // Salva il controllo con esito "graffiti"
+  if(ctrlId){
+    await sb.from('controlli').update({esito:'graffiti',updated_at:new Date().toISOString()}).eq('id',ctrlId);
+  }else{
+    await sb.from('controlli').insert({
+      rotabile_id:rotId,
+      impianto_id:allImpianti[0].id,
+      data,
+      esito:'graffiti',
+      updated_at:new Date().toISOString(),
+      utente_id:adminUtenteId
+    });
+  }
+  
+  showToast(`✓ ${rotNum} — ${selezionati.length} graffiti rimossi`);
+  window.adminCurrentRot=null;
+  loadModificaControlli();
+}
+
+async function adminSalvaNota(rotId,rotNum,data){
+  const note=document.getElementById(`note-${rotId}`).value;
+  const {data:existing}=await sb.from('controlli').select('*').eq('rotabile_id',rotId).eq('data',data).maybeSingle();
+  
+  if(existing){
+    await sb.from('controlli').update({note,updated_at:new Date().toISOString()}).eq('id',existing.id);
+    showToast(`✓ ${rotNum} — nota salvata`);
+  }else{
+    showToast('⚠ Seleziona un esito prima di salvare la nota');
+  }
 }
 
 // ── DEGRAFFITAGGIO ──

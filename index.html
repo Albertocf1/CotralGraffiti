@@ -303,7 +303,7 @@ async function openRotabile(rid){
   const sc=document.getElementById('storico-card');
   if(segs.length){
     const graffiti_attivi=segs.filter(s=>s.attiva);
-    const warning=graffiti_attivi.length>0?`<div style="background:var(--orange-light);border:0.5px solid var(--orange);border-radius:var(--radius-sm);padding:8px;margin-bottom:8px;font-size:12px;color:var(--orange);">⚠️ ${graffiti_attivi.length} graffiti attivi - non possono essere rimossi da qui</div>`:'';
+    const warning=graffiti_attivi.length>0?`<div style="background:var(--orange-light);border:0.5px solid var(--orange);border-radius:var(--radius-sm);padding:8px;margin-bottom:8px;font-size:12px;color:var(--orange);">⚠️ ${graffiti_attivi.length} graffiti attivi - Puoi aggiungerne altri, ma questi non possono essere rimossi da qui</div>`:'';
     sc.classList.remove('hidden');
     document.getElementById('storico-content').innerHTML=warning+segs.map(s=>`• <b>${s.cassa}</b> lato <b>${s.lato}</b> — ${(s.tipologie||[]).join(', ')||'—'} · ${(s.zone||[]).join(', ')||'—'} (${s.data})`).join('<br>');
   }
@@ -333,7 +333,7 @@ function updateEsitoBtn(){
 }
 
 async function prefill(ctrl_id){
-  const {data:segs}=await sb.from('segnalazioni').select('*').eq('controllo_id',ctrl_id).eq('attiva',true);
+  const {data:segs}=await sb.from('segnalazioni').select('*').eq('controllo_id',ctrl_id).eq('attiva',false);
   (segs||[]).forEach(s=>{const cb=document.getElementById(`cb-${s.cassa}-${s.lato}`);if(cb){cb.checked=true;document.getElementById(`cbl-${s.cassa}-${s.lato}`)?.classList.add('checked');document.getElementById(`dp-${s.cassa}-${s.lato}`)?.classList.add('visible');updateCarVis(s.cassa);(s.zone||[]).forEach(z=>{document.querySelector(`#zona-${s.cassa}-${s.lato} .chip[data-v="${z}"]`)?.classList.add('sel');});(s.tipologie||[]).forEach(t=>{document.querySelector(`#tipo-${s.cassa}-${s.lato} .chip[data-v="${t}"]`)?.classList.add('sel');});if(s.estensione)document.querySelector(`#est-${s.cassa}-${s.lato} .chip[data-v="${s.estensione}"]`)?.classList.add('sel-one');}});
 }
 
@@ -361,14 +361,7 @@ function buildTable(){
   const table=document.getElementById('casse-table');table.innerHTML='';
   currentCasse.forEach(c=>{
     const prevSegs=(storicoGraffiti[currentRotabile?.id]||[]).filter(s=>s.cassa===c.id);
-    const prevSegsAttivi=prevSegs.filter(s=>s.attiva);
-    const cbsHtml=c.lati.map(lato=>{
-      const hasPrev=prevSegs.some(s=>s.lato===lato);
-      const hasActive=prevSegsAttivi.some(s=>s.lato===lato);
-      const disabled=hasActive?' disabled style="opacity:0.5;cursor:not-allowed;"':'';
-      const title=hasActive?' title="Graffiti già registrato - non può essere rimosso"':'';
-      return `<label class="cb-item" id="cbl-${c.id}-${lato}" ${disabled}><input type="checkbox" id="cb-${c.id}-${lato}" onchange="toggleDet('${c.id}','${lato}',this.checked)"${disabled}${title}/><span>${lato}${hasPrev?'<span class="prev-dot"></span>':''}</span></label>`;
-    }).join('');
+    const cbsHtml=c.lati.map(lato=>{const hasPrev=prevSegs.some(s=>s.lato===lato);return `<label class="cb-item" id="cbl-${c.id}-${lato}"><input type="checkbox" id="cb-${c.id}-${lato}" onchange="toggleDet('${c.id}','${lato}',this.checked)"/><span>${lato}${hasPrev?'<span class="prev-dot"></span>':''}</span></label>`;}).join('');
     const detHtml=c.lati.map(lato=>`<div class="detail-panel" id="dp-${c.id}-${lato}"><div class="detail-group"><label>Zona (più scelte)</label><div class="chip-group" id="zona-${c.id}-${lato}">${ZONE.map(z=>`<span class="chip" data-v="${z}" onclick="toggleChip(this)">${z}</span>`).join('')}</div></div><div class="detail-group"><label>Tipologia (più scelte)</label><div class="chip-group" id="tipo-${c.id}-${lato}">${TIPI.map(t=>`<span class="chip" data-v="${t}" onclick="toggleChip(this)">${t}</span>`).join('')}</div></div><div class="detail-group"><label>Estensione</label><div class="chip-group" id="est-${c.id}-${lato}">${ESTENSIONI.map(e=>`<span class="chip" data-v="${e}" onclick="selOne(this,'est-${c.id}-${lato}')">${e}</span>`).join('')}</div></div><input class="note-input" type="text" id="note-${c.id}-${lato}" placeholder="Note su ${c.label} lato ${lato}..."/><label class="foto-trigger" id="ft-${c.id}-${lato}">📷 Scatta / allega foto<input type="file" accept="image/*" capture="environment" multiple class="foto-upload" onchange="handleFoto(this,'${c.id}','${lato}')"/></label><div class="foto-preview" id="fp-${c.id}-${lato}"></div></div>`).join('');
     const tr=document.createElement('tr');
     tr.innerHTML=`<td style="width:62px;padding-top:12px;vertical-align:top;"><span class="car-badge${c.isTestata?' testata':''}">${c.label}</span></td><td><div class="checkboxes">${cbsHtml}</div>${detHtml}</td>`;

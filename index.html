@@ -212,6 +212,8 @@ function formatFileSize(bytes) {
 }
 
 // ===== CORE APP =====
+const SUPABASE_URL='https://qirrexwnulmszuscgcgl.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpcnJleHdudWxtc3p1c2NnY2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NjU4ODMsImV4cCI6MjA5MjM0MTg4M30.8HDtFVYplk-tXSznmMr1oXkdQlTwXV4qdLIOqodU9i0';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let session=null,impianti=[],rotabili=[],currentRotabile=null,currentCasse=[],currentEsito=null,storicoGraffiti={},controlliOggi={},fotoFiles={},isAdmin=false;
 const ZONE=['parte bassa','parte media','parte alta','estremità'];
@@ -318,6 +320,9 @@ function renderList(){
     return `<div class="rot-item" onclick="openRotabile('${r.id}')"><div><div class="rot-num">${r.nome}</div><div class="rot-meta">${r.tipo}</div></div>${esito_badge}</div>`;
   }).join('');
   document.getElementById('app-content').innerHTML=`<div class="card"><div class="card-title">Rotabili oggi (${today()})</div><div class="group-label">${rotabili.length} da controllare</div>${html}</div>`;
+  // Refresh automatico ogni 10 secondi per sincronizzare dati da admin
+  clearInterval(window.refreshInterval);
+  window.refreshInterval=setInterval(()=>{loadData();}, 10000);
 }
 
 function openRotabile(id){
@@ -326,12 +331,14 @@ function openRotabile(id){
   currentCasse=JSON.parse(currentRotabile.casse_json||'[]');
   currentEsito=controlliOggi[id]?.esito||null;
   fotoFiles={};
+  // Ferma il refresh periodico mentre sei dentro la scheda
+  clearInterval(window.refreshInterval);
   renderScheda();
 }
 
 function renderScheda(){
   const existing=controlliOggi[currentRotabile.id];
-  let html=`<button class="back-btn" onclick="renderList()">← Indietro</button><div class="card"><div class="scheda-num">${currentRotabile.nome}</div><div class="scheda-meta">${currentRotabile.tipo}</div></div>`;
+  let html=`<button class="back-btn" onclick="backToListAndRefresh()">← Indietro</button><div class="card"><div class="scheda-num">${currentRotabile.nome}</div><div class="scheda-meta">${currentRotabile.tipo}</div></div>`;
   
   // Se già salvato con graffiti e NON è admin, blocca il cambio esito
   const esitoBloccato = !isAdmin && existing && existing.esito === 'graffiti';
@@ -386,6 +393,11 @@ function buildTable(){
 }
 
 function toggleDet(id,lato,checked){document.getElementById(`dp-${id}-${lato}`)?.classList.toggle('visible',checked);document.getElementById(`cbl-${id}-${lato}`)?.classList.toggle('checked',checked);}
+
+async function backToListAndRefresh(){
+  await loadData();
+  renderList();
+}
 function toggleChip(el){el.classList.toggle('sel');}
 function selOne(el,gid){document.getElementById(gid).querySelectorAll('.chip').forEach(c=>c.classList.remove('sel','sel-one'));el.classList.add('sel-one');}
 
@@ -485,6 +497,8 @@ async function saveScheda(){
     showToast('✓ Salvato');
     await loadData();
     renderList();
+    // Refresh automatico dopo 2 secondi per riflettere i cambiamenti del degraffitaggio da admin
+    setTimeout(()=>{loadData();renderList();}, 2000);
   }catch(e){
     showToast('Errore: '+e.message,4000);
   }finally{
